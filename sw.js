@@ -1,19 +1,23 @@
-const CACHE_NAME = 'alfayez-v1';
+const CACHE_NAME = 'alfayez-v2';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './db.js',
   './app.js',
-  './logo.jpg'
+  './logo.jpg',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
