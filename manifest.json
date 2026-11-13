@@ -4,6 +4,7 @@
   "description": "برنامج إدارة لمركز الفايز للزيوت والشحومات",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0c2b21",
   "theme_color": "#0c2b21",
   "icons": [
