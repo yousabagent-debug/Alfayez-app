@@ -10,7 +10,7 @@ const getToday = () => new Date().toISOString().split('T')[0];
 // ==== التنقل ====
 function navigate(screen) { state.screen = screen; render(); }
 
-// ==== شاشة البداية ====
+// ==== شاشة البداية (مصلحة للمدير) ====
 async function initSplash() {
     const splash = $('#splash-screen');
     if (splash) {
@@ -24,14 +24,24 @@ async function initSplash() {
                 if (!user) {
                     renderLoginScreen();
                 } else {
+                    // نجيب البروفايل، ولو مش موجود أو لسه pending، بنحاول نضيفه/نحدثه
                     let profile = await getUserProfile(user.id);
+                    
                     if (!profile) {
                         try {
                             await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
                             profile = await getUserProfile(user.id);
                         } catch(e) { console.log(e); }
                     }
-                    if (!profile || profile.status === 'pending') {
+
+                    // لو لسه pending، بس إحنا عارفين إن ده إيميل المدير، بنخليه يدخل على طول
+                    // (عشان نكسر مشكلة الشاشة البيضا للمدير)
+                    const isAdminEmail = user.email === 'yousabagent@gmail.com' || user.email === 'yousabproject1@gmail.com'; // حط إيميلك هنا
+                    
+                    if (isAdminEmail) {
+                        state.userProfile = { ...profile, role: 'admin', status: 'approved' };
+                        renderBranches();
+                    } else if (!profile || profile.status === 'pending') {
                         renderPendingScreen(user.email);
                     } else if (profile.status === 'approved') {
                         state.userProfile = profile;
