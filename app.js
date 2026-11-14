@@ -10,7 +10,7 @@ const getToday = () => new Date().toISOString().split('T')[0];
 // ==== التنقل ====
 function navigate(screen) { state.screen = screen; render(); }
 
-// ==== شاشة البداية ====
+// ==== شاشة البداية (المعدلة) ====
 async function initSplash() {
     const splash = $('#splash-screen');
     if (splash) {
@@ -20,16 +20,19 @@ async function initSplash() {
                 splash.classList.add('hidden');
                 $('#app').classList.remove('hidden');
                 
-                // التحقق من تسجيل الدخول
                 const user = await getCurrentUser();
                 if (!user) {
                     renderLoginScreen();
                 } else {
+                    // هنا التعديل: بنحاول نجيب البروفايل، لو مش موجود بنضيفه
                     let profile = await getUserProfile(user.id);
                     if (!profile) {
-                        await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
-                        profile = await getUserProfile(user.id);
+                        try {
+                            await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
+                            profile = await getUserProfile(user.id);
+                        } catch(e) { console.log(e); }
                     }
+
                     if (!profile || profile.status === 'pending') {
                         renderPendingScreen(user.email);
                     } else if (profile.status === 'approved') {
