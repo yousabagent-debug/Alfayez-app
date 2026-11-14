@@ -3,6 +3,12 @@ let state = { currentBranch: null, screen: 'login', userProfile: null };
 
 // ==== أدوات مساعدة ====
 const $ = (sel) => document.querySelector(sel);
+const createEl = (tag, className, innerHTML) => { 
+    const el = document.createElement(tag); 
+    if (className) el.className = className; 
+    if (innerHTML) el.innerHTML = innerHTML; 
+    return el; 
+};
 const formatMoney = (num) => new Intl.NumberFormat('en-US').format(num || 0);
 const getToday = () => new Date().toISOString().split('T')[0];
 
@@ -21,7 +27,32 @@ async function initSplash() {
             setTimeout(async () => {
                 splash.classList.add('hidden');
                 $('#app').classList.remove('hidden');
-                navigate('login'); // نروح لشاشة تسجيل الدخول
+                
+                const user = await getCurrentUser();
+                if (!user) {
+                    navigate('login');
+                } else {
+                    let profile = await getUserProfile(user.id);
+                    
+                    if (!profile) {
+                        try {
+                            await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
+                            profile = await getUserProfile(user.id);
+                        } catch(e) { console.log(e); }
+                    }
+
+                    const isAdminEmail = user.email === 'yousabagent@gmail.com' || user.email === 'yousabproject1@gmail.com';
+                    
+                    if (isAdminEmail) {
+                        state.userProfile = { ...profile, role: 'admin', status: 'approved' };
+                        navigate('branches');
+                    } else if (!profile || profile.status === 'pending') {
+                        navigate('pending');
+                    } else if (profile.status === 'approved') {
+                        state.userProfile = profile;
+                        navigate('branches');
+                    }
+                }
             }, 500);
         }, 2000);
     }
@@ -30,8 +61,9 @@ async function initSplash() {
 // ==== الرسم (هيتوسع بعدين) ====
 async function render() {
     if (state.screen === 'login') return renderLoginScreen();
+    if (state.screen === 'branches') return renderBranches();
     
-    // الشاشات التانية هتتضاف بعدين
+    // شاشات تانية مؤقتة
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
 }
 
