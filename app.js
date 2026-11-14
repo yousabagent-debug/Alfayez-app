@@ -334,4 +334,47 @@ async function viewSupplyDetails(id) {
             <div style="background:var(--bg-color); padding:10px; border-radius:8px; text-align:center; margin-bottom:20px; font-size:0.9rem; color:var(--text-muted);">🔒 نسخة مؤرشفة — لا يمكن تعديل الأصناف أو القيم</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;"><div><h3>الوردية ${s.type}</h3><p style="font-size:0.85rem; color:var(--text-muted);">${s.date} · الموظف: ${s.employee}</p></div><button class="btn btn-outline" style="width:auto; padding:8px; color:var(--danger); border-color:var(--danger); margin:0;" onclick="deleteSupply(${s.id}, this)">حذف الوردية</button></div>
             <table style="width:100%; text-align:right;"><tr><th style="padding-bottom:10px; border-bottom:1px solid var(--border);">الصنف</th><th style="padding-bottom:10px; border-bottom:1px solid var(--border);">الكمية</th></tr>${items.map(i => `<tr><td style="padding:10px 0; border-bottom:1px solid var(--border);"><div style="font-weight:700;">${i.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${i.company}</div></td><td style="padding:10px 0; border-bottom:1px solid var(--border); font-weight:700;">${i.qty}</td></tr>`).join('')}</table>
-            <div style="display:flex; justify-content:space-between; margin-top:20px; font
+            <div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:800; font-size:1.2rem;"><span>${items.length} صنف</span><span style="color:var(--primary);">${formatMoney(s.total)} ج</span></div>
+        </div>
+    `;
+    document.body.appendChild(overlay); overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+}
+
+async function deleteSupply(id, btn) {
+    if (!confirm('هل أنت متأكد من حذف هذه الوردية وإرجاع الكميات؟')) return;
+    const s = await getById('shifts', id), items = s.invoice_items || [];
+    for (let invItem of items) { if (invItem.id) { const dbItem = await getById('items', invItem.id); if(dbItem) { dbItem.qty = (dbItem.qty || 0) + invItem.qty; await updateItem('items', dbItem); } } }
+    await deleteItem('shifts', id); btn.closest('.bottom-sheet-overlay').remove(); renderSupplies();
+}
+
+async function openSettings() {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3>⚙️ إعدادات المدير</h3>
+                <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            ${state.userProfile && state.userProfile.role === 'admin' ? `
+                <button class="btn btn-primary" style="margin-bottom:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 إدارة الحسابات والموظفين</button>
+            ` : ''}
+            
+            <button class="btn btn-outline" style="margin-bottom:10px; color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 تسجيل الخروج</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+window.onload = () => { initSplash(); };
+
+async function render() {
+    if (state.screen === 'dashboard') return renderDashboard();
+    if (state.screen === 'goods') return renderGoods();
+    if (state.screen === 'shifts') return renderShifts();
+    if (state.screen === 'invoice') return renderInvoice();
+    if (state.screen === 'supplies') return renderSupplies();
+    if (state.screen === 'branches') return renderBranches();
+    $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
+    renderBottomNav(state.screen);
+}
