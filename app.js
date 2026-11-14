@@ -1,7 +1,4 @@
-console.log("App.js loaded");
-
+console.log("تم تحميل app.js");
 window.onload = function() {
-    document.getElementById('splash-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('main-content').innerHTML = '<h1 style="text-align:center; color: blue; margin-top: 50px;">التطبيق شغال تمام!</h1>';
+    document.body.innerHTML = "<h1 style='color: red; text-align: center; margin-top: 100px;'>app.js شغال</h1>";
 };
