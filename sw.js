@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alfayez-v10';
+const CACHE_NAME = 'alfayez-final-v1';
 const ASSETS = [
   './',
   './index.html',
@@ -10,39 +10,26 @@ const ASSETS = [
   './icon-512.png'
 ];
 
-// حفظ الملفات أول مرة
 self.addEventListener('install', (e) => {
   self.skipWaiting();
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
-// مسح أي كاش قديم
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      );
+      return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
     })
   );
   self.clients.claim();
 });
 
-// جلب الملفات من الكاش لو مفيش نت
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request).then((res) => {
       const copy = res.clone();
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(e.request, copy);
-      });
+      caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
       return res;
-    }).catch(() => {
-      return caches.match(e.request);
-    })
+    }).catch(() => caches.match(e.request))
   );
 });
