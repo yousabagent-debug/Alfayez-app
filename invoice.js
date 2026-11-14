@@ -1,4 +1,3 @@
-// ==== شاشة الفاتورة ====
 async function renderInvoice() {
     if (!state.activeShift) return navigate('shifts');
     const s = state.activeShift, items = s.invoiceItems || s.invoice_items || [];
