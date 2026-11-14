@@ -1,74 +1,82 @@
-const DB_NAME = 'alfayez_db';
-const DB_VER = 1;
-let db;
+// إعدادات Supabase
+const SUPABASE_URL = 'https://dbmdovcnltehviliobdy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ZLPavNoDjlUghIkBWrLFlg_KU2AFkBl';
 
-// دالة فتح قاعدة البيانات وإنشاء الجداول
-function initDB() {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VER);
-        
-        req.onupgradeneeded = (e) => {
-            const d = e.target.result;
-            // إنشاء الجداول لو مش موجودة
-            if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
-            if (!d.objectStoreNames.contains('branches')) d.createObjectStore('branches', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('companies')) d.createObjectStore('companies', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('items')) d.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('additions')) d.createObjectStore('additions', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('shifts')) d.createObjectStore('shifts', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('invoices')) d.createObjectStore('invoices', { keyPath: 'id', autoIncrement: true });
-            if (!d.objectStoreNames.contains('expenses')) d.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
-        };
+let supabaseClient = null;
 
-        req.onsuccess = (e) => { db = e.target.result; resolve(); };
-        req.onerror = (e) => reject(e);
+// تحميل مكتبة Supabase
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+document.head.appendChild(script);
+
+script.onload = () => {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('Supabase Ready');
+};
+
+// ===== دوال قاعدة البيانات (التي ستحل محل IndexedDB) =====
+
+async function getAll(table) {
+    if (!supabaseClient) return [];
+    const { data, error } = await supabaseClient.from(table).select('*').order('id', { ascending: true });
+    if (error) { console.error(error); return []; }
+    return data || [];
+}
+
+async function getById(table, id) {
+    if (!supabaseClient) return null;
+    const { data, error } = await supabaseClient.from(table).select('*').eq('id', id).single();
+    if (error) return null;
+    return data;
+}
+
+async function addItem(table, item) {
+    if (!supabaseClient) return null;
+    const { data, error } = await supabaseClient.from(table).insert([item]).select();
+    if (error) { console.error(error); return null; }
+    return data[0];
+}
+
+async function updateItem(table, item) {
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.from(table).update(item).eq('id', item.id);
+    if (error) console.error(error);
+}
+
+async function deleteItem(table, id) {
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.from(table).delete().eq('id', id);
+    if (error) console.error(error);
+}
+
+// دالة تسجيل الدخول بجوجل
+async function signInWithGoogle() {
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + window.location.pathname }
     });
+    if (error) alert(error.message);
 }
 
-// دوال مساعدة للتعامل مع قاعدة البيانات
-const getStore = (store, mode = 'readonly') => db.transaction(store, mode).objectStore(store);
-
-const getAll = (store) => new Promise(r => { 
-    const q = getStore(store).getAll(); 
-    q.onsuccess = () => r(q.result); 
-});
-
-const getById = (store, id) => new Promise(r => { 
-    const q = getStore(store).get(id); 
-    q.onsuccess = () => r(q.result); 
-});
-
-const addItem = (store, item) => new Promise(r => { 
-    const q = getStore(store, 'readwrite').add(item); 
-    q.onsuccess = () => r(q.result); 
-});
-
-const updateItem = (store, item) => new Promise(r => { 
-    const q = getStore(store, 'readwrite').put(item); 
-    q.onsuccess = () => r(q.result); 
-});
-
-const deleteItem = (store, id) => new Promise(r => { 
-    const q = getStore(store, 'readwrite').delete(id); 
-    q.onsuccess = () => r(); 
-});
-
-// دالة تهيئة البيانات الأولية (أول مرة بس)
-async function seedData() {
-    const settings = await getAll('settings');
-    if (settings.length > 0) return; // لو البيانات موجودة متعملهاش تاني
-
-    // إعدادات المدير (الباسورد الافتراضي)
-    await addItem('settings', { key: 'manager_pass', value: '1358' });
-    
-    // الفروع الأساسية (هنخليهم عشان تقدر تدخل وتجرب، وتقدر تغيرهم بعدين)
-    await addItem('branches', { name: 'السيد هاشم', pass: '123' });
-    await addItem('branches', { name: 'الأربعين', pass: '123' });
-
-    // ملاحظة: الشركات والأصناف هنضيفها إحنا من داخل التطبيق زي ما طلبت
+// دالة تسجيل الخروج
+async function signOut() {
+    if (!supabaseClient) return;
+    await supabaseClient.auth.signOut();
+    window.location.reload();
 }
 
-// تشغيل قاعدة البيانات أول ما الملف يفتح
-initDB().then(() => {
-    seedData();
-}).catch(err => console.error("DB Error:", err));
+// دالة التحقق من المستخدم الحالي
+async function getCurrentUser() {
+    if (!supabaseClient) return null;
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    return user;
+}
+
+// دالة جلب بروفايل المستخدم
+async function getUserProfile(userId) {
+    if (!supabaseClient) return null;
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (error) return null;
+    return data;
+}
