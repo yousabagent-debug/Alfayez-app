@@ -1,10 +1,8 @@
-// إعدادات Supabase
 const SUPABASE_URL = 'https://dbmdovcnltehviliobdy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZLPavNoDjlUghIkBWrLFlg_KU2AFkBl';
 
 let supabaseClient = null;
 
-// تحميل مكتبة Supabase
 const script = document.createElement('script');
 script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 document.head.appendChild(script);
@@ -13,8 +11,6 @@ script.onload = () => {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log('Supabase Ready');
 };
-
-// ===== دوال قاعدة البيانات (التي ستحل محل IndexedDB) =====
 
 async function getAll(table) {
     if (!supabaseClient) return [];
@@ -49,7 +45,6 @@ async function deleteItem(table, id) {
     if (error) console.error(error);
 }
 
-// دالة تسجيل الدخول بجوجل
 async function signInWithGoogle() {
     if (!supabaseClient) return;
     const { error } = await supabaseClient.auth.signInWithOAuth({
@@ -59,21 +54,18 @@ async function signInWithGoogle() {
     if (error) alert(error.message);
 }
 
-// دالة تسجيل الخروج
 async function signOut() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     window.location.reload();
 }
 
-// دالة التحقق من المستخدم الحالي
 async function getCurrentUser() {
     if (!supabaseClient) return null;
     const { data: { user } } = await supabaseClient.auth.getUser();
     return user;
 }
 
-// دالة جلب بروفايل المستخدم
 async function getUserProfile(userId) {
     if (!supabaseClient) return null;
     const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
