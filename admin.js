@@ -1,7 +1,5 @@
-// ==== إدارة الحسابات والموافقات (للمدير فقط) ====
-
+// ==== إدارة الحسابات والموظفين ====
 async function renderAdminPanel() {
-    // جلب كل الحسابات من جدول profiles
     const { data: profiles, error } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
     const branches = await getAll('branches');
 
@@ -10,7 +8,7 @@ async function renderAdminPanel() {
     let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
             <h2>إدارة الحسابات</h2>
-            <button class="icon-btn" onclick="navigate('dashboard')">🔙</button>
+            <button class="icon-btn" onclick="navigate('branches')">🔙</button>
         </div>
         <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">وافق على الموظفين وحدد الفروع الخاصة بهم</p>
         <div id="profilesList">
@@ -50,12 +48,9 @@ async function renderAdminPanel() {
     }
     html += '</div>';
     $('#main-content').innerHTML = html;
-    renderBottomNav('dashboard'); // بنخلي زرار النظرة هو النشط
 }
 
-// الموافقة على مستخدم
 async function approveUser(userId) {
-    // هنطلب من المدير يختار الفرع الأول
     const branches = await getAll('branches');
     let branchOptions = branches.map(b => `${b.id}: ${b.name}`).join('\n');
     const choice = prompt(`اختر رقم الفرع للموظف:\n${branchOptions}`);
@@ -70,7 +65,6 @@ async function approveUser(userId) {
     renderAdminPanel();
 }
 
-// تغيير فرع مستخدم
 async function changeBranch(userId, branchId) {
     if (!branchId) return;
     const { error } = await supabaseClient.from('profiles').update({ branch_id: parseInt(branchId) }).eq('id', userId);
@@ -78,10 +72,64 @@ async function changeBranch(userId, branchId) {
     alert('تم تغيير الفرع');
 }
 
-// حذف حساب
 async function deleteUserProfile(userId) {
     if (!confirm('هل أنت متأكد من حذف هذا الحساب من التطبيق؟ (لن يمسح من جوجل)')) return;
     const { error } = await supabaseClient.from('profiles').delete().eq('id', userId);
     if (error) { alert('خطأ في الحذف'); return; }
     renderAdminPanel();
+}
+
+// ==== إدارة الأسعار ====
+async function renderPriceManager() {
+    const companies = await getAll('companies');
+    const items = await getAll('items');
+    
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
+            <h2>إدارة الأسعار</h2>
+            <button class="icon-btn" onclick="navigate('branches')">🔙</button>
+        </div>
+        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">أي تعديل في السعر هنا سيسري على كل الفروع فوراً</p>
+        <div id="companiesList">
+    `;
+
+    companies.forEach(c => {
+        const compItems = items.filter(i => i.company === c.name);
+        if (compItems.length === 0) return;
+        
+        html += `
+            <div class="card" style="padding:15px; margin-bottom:15px; border:1px solid var(--border);">
+                <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;">${c.name}</h3>
+                <div class="table-responsive">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:var(--bg-color);">
+                                <th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th>
+                                <th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem; width:100px;">السعر</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${compItems.map(item => `
+                                <tr>
+                                    <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
+                                    <td style="padding:8px; border-bottom:1px solid var(--border);">
+                                        <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice(${item.id}, this.value)">
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    $('#main-content').innerHTML = html;
+}
+
+async function updatePrice(itemId, newPrice) {
+    if (!newPrice) return;
+    const { error } = await supabaseClient.from('items').update({ price: parseFloat(newPrice) }).eq('id', itemId);
+    if (error) { alert('خطأ في تحديث السعر'); return; }
+    alert('تم تحديث السعر بنجاح!');
 }
