@@ -3,7 +3,8 @@ let state = {
     currentBranch: null,
     screen: 'branches',
     activeShift: null,
-    tempShiftType: 'نهارية'
+    tempShiftType: 'نهارية',
+    userProfile: null
 };
 
 // ==== أدوات مساعدة ====
@@ -38,10 +39,18 @@ async function initSplash() {
                 if (!user) {
                     renderLoginScreen();
                 } else {
-                    const profile = await getUserProfile(user.id);
+                    let profile = await getUserProfile(user.id);
+                    
+                    // لو المستخدم جديد، نسجله في قاعدة البيانات
+                    if (!profile) {
+                        await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
+                        profile = await getUserProfile(user.id);
+                    }
+
                     if (!profile || profile.status === 'pending') {
                         renderPendingScreen(user.email);
                     } else if (profile.status === 'approved') {
+                        state.userProfile = profile;
                         renderBranches();
                     }
                 }
@@ -94,7 +103,7 @@ async function renderBranches() {
             <p style="color:var(--text-muted); font-size:0.9rem;">كل فرع له بضاعته ووردياته وحساباته</p>
         </div>
         <div id="branchesList"></div>
-        <button class="btn btn-outline" style="border-style: dashed; border-width: 2px;" onclick="addBranchPrompt()">+ إضافة فرع جديد</button>
+        ${state.userProfile.role === 'admin' ? `<button class="btn btn-outline" style="border-style: dashed; border-width: 2px; margin-top:10px;" onclick="addBranchPrompt()">+ إضافة فرع جديد</button>` : ''}
         <div style="text-align:center; margin-top:30px; font-size:0.85rem; color:var(--text-muted);">
             ${branches.length} من 10 فروع
         </div>
