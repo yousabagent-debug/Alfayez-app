@@ -24,18 +24,63 @@ function navigate(screen) {
 }
 
 // ==== شاشة البداية ====
-function initSplash() {
+async function initSplash() {
     const splash = $('#splash-screen');
     if (splash) {
-        setTimeout(() => {
+        setTimeout(async () => {
             splash.style.opacity = '0';
-            setTimeout(() => {
+            setTimeout(async () => {
                 splash.classList.add('hidden');
                 $('#app').classList.remove('hidden');
-                renderBranches();
+                
+                // التحقق من تسجيل الدخول
+                const user = await getCurrentUser();
+                if (!user) {
+                    renderLoginScreen();
+                } else {
+                    const profile = await getUserProfile(user.id);
+                    if (!profile || profile.status === 'pending') {
+                        renderPendingScreen(user.email);
+                    } else if (profile.status === 'approved') {
+                        renderBranches();
+                    }
+                }
             }, 500);
         }, 2000);
     }
+}
+
+// شاشة تسجيل الدخول
+function renderLoginScreen() {
+    $('#main-content').innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:70vh; text-align:center;">
+            <img src="logo.jpg" style="width:100px; height:100px; border-radius:50%; margin-bottom:20px; border:2px solid var(--primary);">
+            <h2>مرحباً بك في الفايز</h2>
+            <p style="color:var(--text-muted); margin-bottom:30px;">سجل دخولك للبدء</p>
+            <button class="btn btn-primary" style="display:flex; justify-content:center; gap:10px; align-items:center;" onclick="signInWithGoogle()">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20">
+                تسجيل الدخول بحساب جوجل
+            </button>
+        </div>
+    `;
+    $('#bottom-nav').classList.add('hidden');
+    $('#branch-name').innerText = "تسجيل الدخول";
+}
+
+// شاشة انتظار الموافقة
+function renderPendingScreen(email) {
+    $('#main-content').innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:60vh; text-align:center; padding:20px;">
+            <div style="font-size:3rem; margin-bottom:20px;">⏳</div>
+            <h2 style="color:var(--primary); margin-bottom:10px;">حسابك قيد المراجعة</h2>
+            <p style="color:var(--text-muted); margin-bottom:5px;">البريد الإلكتروني:</p>
+            <p style="font-weight:bold; margin-bottom:20px;">${email}</p>
+            <p style="color:var(--text-muted); font-size:0.9rem;">يرجى الانتظار حتى يقوم المدير بالموافقة عليك وتحديد الفرع الخاص بك.</p>
+            <button class="btn btn-outline" style="margin-top:30px; color:var(--danger);" onclick="signOut()">تسجيل خروج</button>
+        </div>
+    `;
+    $('#bottom-nav').classList.add('hidden');
+    $('#branch-name').innerText = "قيد المراجعة";
 }
 
 // ==== شاشة اختيار الفرع ====
@@ -82,46 +127,30 @@ async function renderBranches() {
 }
 
 function loginBranch(branch) {
-    const pass = prompt(`أدخل باسورد فرع (${branch.name}):`);
-    if (pass === branch.pass) {
-        state.currentBranch = branch;
-        $('#branch-name').innerText = branch.name;
-        navigate('dashboard');
-    } else if (pass !== null) {
-        alert('باسورد خطأ!');
-    }
+    state.currentBranch = branch;
+    $('#branch-name').innerText = branch.name;
+    navigate('dashboard');
 }
 
 async function addBranchPrompt() {
-    const pass = prompt('أدخل باسورد المدير (لإضافة فرع):');
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if (pass !== managerPass) return alert('باسورد خطأ');
-
     const name = prompt('اسم الفرع الجديد:');
     if (name) {
-        await addItem('branches', { name, pass: '123' });
+        await addItem('branches', { name });
         renderBranches();
     }
 }
 
 async function editBranch(branch) {
-    const pass = prompt('أدخل باسورد المدير للتعديل:');
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if (pass !== managerPass) return alert('باسورد خطأ');
-
-    const action = prompt('اكتب 1 لتغيير الاسم، أو 2 لتغيير الباسورد:');
-    if (action === '1') {
-        const newName = prompt('الاسم الجديد:', branch.name);
-        if (newName) { branch.name = newName; await updateItem('branches', branch); renderBranches(); }
-    } else if (action === '2') {
-        const newPass = prompt('الباسورد الجديد:', branch.pass);
-        if (newPass) { branch.pass = newPass; await updateItem('branches', branch); alert('تم التغيير'); }
+    const newName = prompt('الاسم الجديد للفرع:', branch.name);
+    if (newName && newName !== branch.name) {
+        branch.name = newName;
+        await updateItem('branches', branch);
+        renderBranches();
     }
 }
 
 function logout() {
-    state.currentBranch = null;
-    navigate('branches');
+    signOut();
 }
 
 // ==== شريط التنقل السفلي ====
@@ -150,7 +179,7 @@ async function renderDashboard() {
     const shifts = await getAll('shifts');
     
     let totalValue = items.reduce((a,b) => a + ((b.qty||0) * (b.price||0)), 0);
-    let openShifts = shifts.filter(s => !s.closed && s.branch === state.currentBranch.id).length;
+    let openShifts = shifts.filter(s => !s.closed && s.branch_id === state.currentBranch.id).length;
 
     $('#main-content').innerHTML = `
         <div style="padding-bottom:20px; padding-top:10px; display:flex; justify-content:space-between; align-items:center;">
@@ -284,10 +313,6 @@ async function searchItems(query) {
 }
 
 async function addCompanyPrompt() {
-    const pass = prompt('أدخل باسورد المدير لإضافة شركة:');
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if (pass !== managerPass) return alert('باسورد خطأ');
-
     const name = prompt('اسم الشركة الجديدة:');
     if (name) {
         await addItem('companies', { name });
@@ -345,7 +370,6 @@ async function openCompany(companyName) {
 }
 
 async function addItemToCompany(companyName) {
-    if (!await confirmManagerPass()) return;
     const name = prompt('اسم الصنف الجديد:');
     if (!name) return;
     const price = parseFloat(prompt('سعر الوحدة (جنيه):'));
@@ -356,7 +380,6 @@ async function addItemToCompany(companyName) {
 }
 
 async function editCompany(oldName) {
-    if (!await confirmManagerPass()) return;
     const newName = prompt('اسم الشركة الجديد:', oldName);
     if (newName && newName !== oldName) {
         const companies = await getAll('companies');
@@ -401,7 +424,7 @@ async function openManageGoods() {
                     ${grouped[date].map(add => `
                         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--border);">
                             <div>
-                                <div style="font-weight:700; font-size:0.9rem;">${add.itemName}</div>
+                                <div style="font-weight:700; font-size:0.9rem;">${add.item_name}</div>
                                 <div style="font-size:0.75rem; color:var(--text-muted);">${add.company}</div>
                             </div>
                             <div style="display:flex; align-items:center; gap:10px;">
@@ -427,7 +450,7 @@ async function addNewBatch() {
     const qty = parseFloat(prompt('الكمية المضافة:'));
     if (!qty) return;
 
-    await addItem('additions', { date, company, itemName, qty, type: 'add' });
+    await addItem('additions', { date, company, item_name: itemName, qty });
 
     const items = await getAll('items');
     const existingItem = items.find(i => i.name === itemName && i.company === company);
@@ -442,12 +465,11 @@ async function addNewBatch() {
 }
 
 async function deleteAdditionDate(date, btn) {
-    if (!await confirmManagerPass()) return;
     const additions = await getAll('additions');
     const toDelete = additions.filter(a => a.date === date);
     for (let add of toDelete) {
         const items = await getAll('items');
-        const item = items.find(i => i.name === add.itemName && i.company === add.company);
+        const item = items.find(i => i.name === add.item_name && i.company === add.company);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', add.id);
     }
@@ -456,11 +478,10 @@ async function deleteAdditionDate(date, btn) {
 }
 
 async function deleteSingleAddition(id, btn) {
-    if (!await confirmManagerPass()) return;
     const add = await getById('additions', id);
     if (add) {
         const items = await getAll('items');
-        const item = items.find(i => i.name === add.itemName && i.company === add.company);
+        const item = items.find(i => i.name === add.item_name && i.company === add.company);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', id);
     }
@@ -470,7 +491,7 @@ async function deleteSingleAddition(id, btn) {
 
 // ================= شاشة الورديات =================
 async function renderShifts() {
-    const shifts = (await getAll('shifts')).filter(s => !s.closed && s.branch === state.currentBranch.id);
+    const shifts = (await getAll('shifts')).filter(s => !s.closed && s.branch_id === state.currentBranch.id);
     
     $('#main-content').innerHTML = `
         <h2 style="margin: 15px 0;">الورديات</h2>
@@ -502,7 +523,7 @@ async function renderShifts() {
         ${shifts.length ? shifts.map(s => `
             <div class="card" onclick="resumeShift(${s.id})" style="cursor:pointer;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="color:var(--primary);">${s.type} ${s.isMatabak ? '(مطبق)' : ''} - ${s.employee}</h4>
+                    <h4 style="color:var(--primary);">${s.type} ${s.is_matabak ? '(مطبق)' : ''} - ${s.employee}</h4>
                     <span style="font-size:0.8rem; color:var(--text-muted);">${s.date}</span>
                 </div>
             </div>
@@ -532,22 +553,36 @@ async function openShift() {
     const emp = $('#shiftEmp').value.trim();
     const date = $('#shiftDate').value;
     const isMatabak = $('#shiftMatabak').checked;
-    const shift = { type: state.tempShiftType || 'نهارية', employee: emp, date: date, isMatabak: isMatabak, branch: state.currentBranch.id, closed: false, invoiceItems: [], total: 0 };
-    const id = await addItem('shifts', shift);
-    shift.id = id;
-    state.activeShift = shift;
-    navigate('invoice');
+    const shift = { 
+        type: state.tempShiftType || 'نهارية', 
+        employee: emp, 
+        date: date, 
+        is_matabak: isMatabak, 
+        branch_id: state.currentBranch.id, 
+        closed: false, 
+        invoice_items: [], 
+        total: 0 
+    };
+    const result = await addItem('shifts', shift);
+    if(result) {
+        state.activeShift = result;
+        navigate('invoice');
+    }
 }
 
 async function resumeShift(id) {
     state.activeShift = await getById('shifts', id);
-    navigate('invoice');
+    if (state.activeShift) {
+        state.activeShift.invoiceItems = state.activeShift.invoice_items || [];
+        navigate('invoice');
+    }
 }
 
 // ==== شاشة الفاتورة ====
 async function renderInvoice() {
     if (!state.activeShift) return navigate('shifts');
     const s = state.activeShift;
+    const items = s.invoiceItems || s.invoice_items || [];
     
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
@@ -558,7 +593,7 @@ async function renderInvoice() {
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <div>
-                    <h3 style="color:var(--primary);">وردية ${s.type} ${s.isMatabak ? '(مطبق)' : ''}</h3>
+                    <h3 style="color:var(--primary);">وردية ${s.type} ${s.is_matabak ? '(مطبق)' : ''}</h3>
                     <p style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">الموظف: ${s.employee}</p>
                 </div>
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem; color:var(--danger); border-color:var(--danger);" onclick="deleteShift(${s.id})">حذف الوردية</button>
@@ -568,302 +603,20 @@ async function renderInvoice() {
 
         <div class="card" style="padding:0; overflow:hidden;">
             <div style="padding:15px; background:var(--bg-color); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem; color:var(--text-muted);">
-                <span>الأصناف (${s.invoiceItems.length})</span>
+                <span>الأصناف (${items.length})</span>
                 <span>الإجمالي</span>
             </div>
             
-            ${s.invoiceItems.length === 0 ? `
+            ${items.length === 0 ? `
                 <div style="text-align:center; padding:40px 20px;">
                     <p style="color:var(--text-muted); margin-bottom:5px;">الفاتورة فاضية</p>
                     <p style="font-size:0.8rem; color:var(--text-muted);">اضغط «إضافة صنف» لاختيار بضاعة أو كتابته يدوياً.</p>
                 </div>
-            ` : s.invoiceItems.map((item, idx) => `
+            ` : items.map((item, idx) => `
                 <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <h4 style="font-size:1rem; margin-bottom:5px;">${item.name}</h4>
                         <span style="font-size:0.8rem; color:var(--text-muted);">${item.company}</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="text-align:center;">
-                            <input type="number" value="${item.qty}" style="width:60px; padding:5px; margin:0; text-align:center; font-weight:700;" onchange="updateInvoiceQty(${idx}, this.value)">
-                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">الكمية</div>
-                        </div>
-                        <div style="font-weight:800; font-size:1.1rem; min-width:50px; text-align:left;">${formatMoney(item.price * item.qty)}</div>
-                    </div>
-                </div>
-            `).join('')}
-            
-            <div style="padding:15px; display:flex; justify-content:space-between; font-weight:800; font-size:1.2rem; background:var(--bg-color);">
-                <span>الإجمالي:</span>
-                <span style="color:var(--primary);">${formatMoney(s.total)} ج</span>
-            </div>
-        </div>
-
-        ${s.invoiceItems.length > 0 ? `
-            <button class="btn btn-primary" style="margin-top:20px; background:var(--primary); color:#fff; display:flex; justify-content:center; gap:10px;" onclick="closeShift(${s.id})">💾 حفظ الفاتورة وخصم الكميات</button>
-        ` : ''}
-    `;
-    renderBottomNav('shifts');
-}
-
-function openAddItemModal() {
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.id = 'addItemOverlay';
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3>إضافة صنف للفاتورة</h3>
-                <button class="icon-btn" onclick="document.getElementById('addItemOverlay').remove()">✖</button>
-            </div>
-            
-            <div class="tabs">
-                <div class="tab active" onclick="switchAddTab('goods', this)">من البضاعة</div>
-                <div class="tab" onclick="switchAddTab('manual', this)">إدخال يدوي</div>
-            </div>
-
-            <div id="tab-goods">
-                <label>الشركة</label>
-                <select id="addCompanySelect" onchange="updateItemSelect()"><option value="">كل الشركات</option></select>
-                <label>الصنف</label>
-                <select id="addItemSelect"><option value="">اختر الصنف</option></select>
-                
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;"><label>الكمية</label><input type="number" id="addQty" value="1" step="0.25"></div>
-                    <div style="flex:1;"><label>سعر الوحدة</label><input type="text" id="addPrice" readonly placeholder="تلقائي" style="background:#e8e8e8;"></div>
-                </div>
-                
-                <div class="chips-container">
-                    <div class="chip" onclick="setAddQty(0.25)">ربع</div>
-                    <div class="chip" onclick="setAddQty(0.5)">نصف</div>
-                    <div class="chip" onclick="setAddQty(0.75)">¾</div>
-                    <div class="chip active" onclick="setAddQty(1)">1</div>
-                    <div class="chip" onclick="setAddQty(2)">2</div>
-                </div>
-                <button class="btn btn-primary" onclick="addItemToInvoice('goods')" style="background:#8fa89e;">إضافة للفاتورة</button>
-            </div>
-
-            <div id="tab-manual" class="hidden">
-                <label>اسم الصنف (إدخال يدوي)</label>
-                <input type="text" id="manualName" placeholder="اكتب اسم الصنف...">
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;"><label>الكمية</label><input type="number" id="manualQty" value="1" step="0.25"></div>
-                    <div style="flex:1;"><label>السعر</label><input type="number" id="manualPrice" placeholder="0"></div>
-                </div>
-                <button class="btn btn-primary" onclick="addItemToInvoice('manual')" style="background:#8fa89e; margin-top:20px;">إضافة للفاتورة</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    loadCompanySelect();
-}
-
-function switchAddTab(tabId, btn) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    if(tabId === 'goods') { $('#tab-goods').classList.remove('hidden'); $('#tab-manual').classList.add('hidden'); } 
-    else { $('#tab-goods').classList.add('hidden'); $('#tab-manual').classList.remove('hidden'); }
-}
-
-function setAddQty(qty) {
-    $('#addQty').value = qty;
-    document.querySelectorAll('.chips-container .chip').forEach(c => c.classList.remove('active'));
-    event.target.classList.add('active');
-}
-
-async function loadCompanySelect() {
-    const companies = await getAll('companies');
-    const select = $('#addCompanySelect');
-    if(!select) return;
-    companies.forEach(c => { select.innerHTML += `<option value="${c.name}">${c.name}</option>`; });
-    updateItemSelect();
-}
-
-async function updateItemSelect() {
-    const comp = $('#addCompanySelect').value;
-    const items = await getAll('items');
-    const select = $('#addItemSelect');
-    select.innerHTML = '<option value="">اختر الصنف</option>';
-    const filtered = comp ? items.filter(i => i.company === comp) : items;
-    filtered.forEach(i => { select.innerHTML += `<option value="${i.id}" data-price="${i.price}">${i.name} (متوفر: ${i.qty})</option>`; });
-}
-
-document.addEventListener('change', (e) => {
-    if(e.target.id === 'addItemSelect') {
-        const opt = e.target.options[e.target.selectedIndex];
-        $('#addPrice').value = opt.value ? opt.dataset.price : '';
-    }
-});
-
-async function addItemToInvoice(mode) {
-    let item;
-    if(mode === 'goods') {
-        const id = $('#addItemSelect').value;
-        const qty = parseFloat($('#addQty').value);
-        if(!id || !qty) return alert('اختر الصنف والكمية');
-        const dbItem = await getById('items', parseInt(id));
-        item = { id: dbItem.id, name: dbItem.name, company: dbItem.company, price: dbItem.price, qty: qty };
-    } else {
-        const name = $('#manualName').value;
-        const qty = parseFloat($('#manualQty').value);
-        const price = parseFloat($('#manualPrice').value);
-        if(!name || !qty || !price) return alert('اكمل البيانات');
-        item = { id: null, name, company: 'إدخال يدوي', price, qty };
-    }
-    state.activeShift.invoiceItems.push(item);
-    state.activeShift.total += (item.price * item.qty);
-    await updateItem('shifts', state.activeShift);
-    $('#addItemOverlay').remove();
-    renderInvoice();
-}
-
-async function updateInvoiceQty(idx, newQty) {
-    const s = state.activeShift;
-    s.invoiceItems[idx].qty = parseFloat(newQty);
-    s.total = s.invoiceItems.reduce((a,b) => a + (b.price * b.qty), 0);
-    await updateItem('shifts', s);
-    renderInvoice();
-}
-
-async function closeShift(id) {
-    const s = state.activeShift;
-    for (let invItem of s.invoiceItems) {
-        if (invItem.id) {
-            const dbItem = await getById('items', invItem.id);
-            if(dbItem) { dbItem.qty -= invItem.qty; await updateItem('items', dbItem); }
-        }
-    }
-    s.closed = true;
-    await updateItem('shifts', s);
-    state.activeShift = null;
-    alert('تم حفظ الفاتورة وخصم الكميات بنجاح!');
-    navigate('supplies');
-}
-
-async function deleteShift(id) {
-    const pass = prompt('أدخل باسورد المدير لحذف الوردية:');
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if (pass !== managerPass) return alert('باسورد خطأ');
-    await deleteItem('shifts', id);
-    state.activeShift = null;
-    navigate('shifts');
-}
-
-// ==== شاشة التوريدات ====
-async function renderSupplies() {
-    const shifts = (await getAll('shifts')).filter(s => s.closed && s.branch === state.currentBranch.id).sort((a,b) => b.id - a.id);
-    const totalSupplied = shifts.reduce((a,b) => a + (b.total || 0), 0);
-
-    $('#main-content').innerHTML = `
-        <h2 style="margin: 15px 0;">التوريدات</h2>
-        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">أرشيف الورديات المحفوظة - للعرض فقط</p>
-
-        <div class="card" style="display:flex; justify-content:space-between; font-weight:800; font-size:1.1rem;">
-            <span>عدد الورديات: <span style="color:var(--primary);">${shifts.length}</span></span>
-            <span>${formatMoney(totalSupplied)} جنيه</span>
-        </div>
-
-        ${shifts.length ? shifts.map(s => `
-            <div class="card" onclick="viewSupplyDetails(${s.id})" style="cursor:pointer;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <h4 style="color:var(--primary);">${s.type} ${s.isMatabak ? '(مطبق)' : ''} - ${s.employee}</h4>
-                    <span style="font-weight:800;">${formatMoney(s.total)}</span>
-                </div>
-                <p style="color:var(--text-muted); font-size:0.8rem;">${s.date} · ${s.invoiceItems.length} صنف</p>
-            </div>
-        `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد توريدات محفوظة</p>'}
-    `;
-    renderBottomNav('supplies');
-}
-
-async function viewSupplyDetails(id) {
-    const s = await getById('shifts', id);
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div style="background:var(--bg-color); padding:10px; border-radius:8px; text-align:center; margin-bottom:20px; font-size:0.9rem; color:var(--text-muted);">🔒 نسخة مؤرشفة — لا يمكن تعديل الأصناف أو القيم</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <div>
-                    <h3>الوردية ${s.type}</h3>
-                    <p style="font-size:0.85rem; color:var(--text-muted);">${s.date} · الموظف: ${s.employee}</p>
-                </div>
-                <button class="btn btn-outline" style="width:auto; padding:8px; color:var(--danger); border-color:var(--danger); margin:0;" onclick="deleteSupply(${s.id}, this)">حذف الوردية</button>
-            </div>
-            <table style="width:100%; text-align:right;">
-                <tr><th style="padding-bottom:10px; border-bottom:1px solid var(--border);">الصنف</th><th style="padding-bottom:10px; border-bottom:1px solid var(--border);">الكمية</th></tr>
-                ${s.invoiceItems.map(i => `
-                    <tr>
-                        <td style="padding:10px 0; border-bottom:1px solid var(--border);"><div style="font-weight:700;">${i.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${i.company}</div></td>
-                        <td style="padding:10px 0; border-bottom:1px solid var(--border); font-weight:700;">${i.qty}</td>
-                    </tr>
-                `).join('')}
-            </table>
-            <div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:800; font-size:1.2rem;">
-                <span>${s.invoiceItems.length} صنف</span>
-                <span style="color:var(--primary);">${formatMoney(s.total)} ج</span>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
-}
-
-async function deleteSupply(id, btn) {
-    if (!await confirmManagerPass()) return;
-    const s = await getById('shifts', id);
-    for (let invItem of s.invoiceItems) {
-        if (invItem.id) {
-            const dbItem = await getById('items', invItem.id);
-            if(dbItem) { dbItem.qty += invItem.qty; await updateItem('items', dbItem); }
-        }
-    }
-    await deleteItem('shifts', id);
-    btn.closest('.bottom-sheet-overlay').remove();
-    renderSupplies();
-}
-
-// ==== الإعدادات العامة ====
-async function openSettings() {
-    if (!await confirmManagerPass()) return;
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3>⚙️ إعدادات المدير</h3>
-                <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
-            </div>
-            <button class="btn btn-outline" style="margin-bottom:10px; color:var(--danger); border-color:var(--danger);" onclick="resetApp(); this.closest('.bottom-sheet-overlay').remove();">🗑️ مسح كل البيانات (Reset)</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-async function confirmManagerPass() {
-    const pass = prompt('أدخل باسورد المدير:');
-    if(pass === null) return false;
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if(pass !== managerPass) { alert('باسورد خطأ'); return false; }
-    return true;
-}
-
-async function resetApp() {
-    if(confirm('هل أنت متأكد من مسح كل البيانات؟ لا يمكن التراجع!')) {
-        indexedDB.deleteDatabase('alfayez_db');
-        setTimeout(() => location.reload(), 500);
-    }
-}
-
-// ==== التشغيل الأساسي ====
-window.onload = () => {
-    initSplash();
-};
-
-async function render() {
-    if (state.screen === 'dashboard') return renderDashboard();
-    if (state.screen === 'goods') return renderGoods();
-    if (state.screen === 'shifts') return renderShifts();
-    if (state.screen === 'invoice') return renderInvoice();
-    if (state.screen === 'supplies') return renderSupplies();
-    if (state.screen === 'branches') return renderBranches();
-    $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
-    renderBottomNav(state.screen);
-}
+                        <div style="text
