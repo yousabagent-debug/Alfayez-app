@@ -24,9 +24,7 @@ async function initSplash() {
                 if (!user) {
                     renderLoginScreen();
                 } else {
-                    // نجيب البروفايل، ولو مش موجود أو لسه pending، بنحاول نضيفه/نحدثه
                     let profile = await getUserProfile(user.id);
-                    
                     if (!profile) {
                         try {
                             await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
@@ -34,9 +32,8 @@ async function initSplash() {
                         } catch(e) { console.log(e); }
                     }
 
-                    // لو لسه pending، بس إحنا عارفين إن ده إيميل المدير، بنخليه يدخل على طول
-                    // (عشان نكسر مشكلة الشاشة البيضا للمدير)
-                    const isAdminEmail = user.email === 'yousabagent@gmail.com' || user.email === 'yousabproject1@gmail.com'; // حط إيميلك هنا
+                    // لو إنت المدير، دخلك على طول
+                    const isAdminEmail = user.email === 'yousabagent@gmail.com' || user.email === 'yousabproject1@gmail.com';
                     
                     if (isAdminEmail) {
                         state.userProfile = { ...profile, role: 'admin', status: 'approved' };
@@ -350,7 +347,20 @@ async function deleteSupply(id, btn) {
 
 async function openSettings() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `<div class="bottom-sheet"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;"><h3>⚙️ إعدادات المدير</h3><button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div><button class="btn btn-outline" style="margin-bottom:10px; color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 تسجيل الخروج</button></div>`;
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3>⚙️ إعدادات المدير</h3>
+                <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            ${state.userProfile && state.userProfile.role === 'admin' ? `
+                <button class="btn btn-primary" style="margin-bottom:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 إدارة الحسابات والموظفين</button>
+            ` : ''}
+            
+            <button class="btn btn-outline" style="margin-bottom:10px; color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 تسجيل الخروج</button>
+        </div>
+    `;
     document.body.appendChild(overlay);
 }
 
