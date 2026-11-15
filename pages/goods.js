@@ -6,13 +6,16 @@ async function renderGoods() {
     const companies = await getAll('companies');
     const items = await getAll('items');
 
+    // التحقق من صلاحية المدير
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin:0;">البضاعة الموجودة</h2>
             <div style="display:flex; gap:8px; flex-wrap: wrap;">
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openManageGoods()">إدارة البضاعة</button>
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddBatchSheet()">+ إضافة بضاعة</button>
-                <button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddCompanySheet()">+ شركة</button>
+                ${isAdmin ? `<button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddCompanySheet()">+ شركة</button>` : ''}
             </div>
         </div>
         
@@ -81,8 +84,11 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-// ==== إضافة شركة ====
+// ==== إضافة شركة (للمدير بس) ====
 function openAddCompanySheet() {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -108,6 +114,8 @@ async function openCompany(companyName) {
     const items = await getAll('items');
     const companyItems = items.filter(i => i.company === companyName);
     const totalValue = companyItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
+    
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -117,14 +125,14 @@ async function openCompany(companyName) {
                 <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
             </div>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="openAddItemSheet('${companyName}')">+ إضافة صنف</button>
+                ${isAdmin ? `<button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="openAddItemSheet('${companyName}')">+ إضافة صنف</button>` : ''}
             </div>
             <div class="table-responsive">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead><tr style="background:var(--bg-color);"><th style="padding:10px; border-bottom:1px solid var(--border);">الصنف</th><th style="padding:10px; border-bottom:1px solid var(--border);">الكمية</th><th style="padding:10px; border-bottom:1px solid var(--border);">السعر</th><th style="padding:10px; border-bottom:1px solid var(--border);">القيمة</th></tr></thead>
                     <tbody>
                         ${companyItems.length ? companyItems.map(i => `
-                            <tr onclick="openEditItemSheet(${i.id}, '${companyName}')" style="cursor:pointer;">
+                            <tr onclick="${isAdmin ? `openEditItemSheet(${i.id}, '${companyName}')` : `alert('تعديل السعر للمدير فقط')`}" style="cursor:pointer;">
                                 <td style="padding:10px; border-bottom:1px solid var(--border); font-weight:700;">${i.name}</td>
                                 <td style="padding:10px; border-bottom:1px solid var(--border);">${i.qty || 0}</td>
                                 <td style="padding:10px; border-bottom:1px solid var(--border);">${i.price}</td>
@@ -139,11 +147,19 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== تعديل صنف (بدون حذف - الحذف في شاشة إدارة الأسعار) ====
+// ==== تعديل صنف (السعر للمدير فقط) ====
 async function openEditItemSheet(itemId, companyName) {
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
     const item = await getById('items', itemId);
     if (!item) return;
+    
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    
+    // إذا كان الموظف، نمنعه من التعديل نهائياً
+    if (!isAdmin) {
+        return alert('ليس لديك صلاحية لتعديل الأصناف أو الأسعار');
+    }
+
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -160,6 +176,9 @@ async function openEditItemSheet(itemId, companyName) {
 }
 
 async function saveEditItem(itemId, companyName, btn) {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     const name = document.getElementById('editItemName').value.trim();
     const qty = parseFloat(document.getElementById('editItemQty').value) || 0;
     const price = parseFloat(document.getElementById('editItemPrice').value) || 0;
@@ -170,8 +189,11 @@ async function saveEditItem(itemId, companyName, btn) {
     openCompany(companyName);
 }
 
-// ==== إضافة صنف ====
+// ==== إضافة صنف (للمدير بس) ====
 function openAddItemSheet(companyName) {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -189,6 +211,9 @@ function openAddItemSheet(companyName) {
 }
 
 async function saveNewItem(companyName, btn) {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     const name = document.getElementById('newItemName').value.trim();
     const qty = parseFloat(document.getElementById('newItemQty').value) || 0;
     const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
