@@ -79,3 +79,10 @@ async function getUserProfile(userId) {
     if (error) return null;
     return data;
 }
+
+async function getShiftById(id) {
+    if (!supabaseClient) return null;
+    const { data, error } = await supabaseClient.from('shifts').select('*').eq('id', id).single();
+    if (error) return null;
+    return data;
+}
