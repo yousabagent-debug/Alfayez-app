@@ -66,6 +66,7 @@ async function render() {
     if (state.screen === 'shifts') return renderShifts();
     if (state.screen === 'invoice') return renderInvoice();
     if (state.screen === 'supplies') return renderSupplies();
+    if (state.screen === 'expenses') return renderExpenses();
     
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
     renderBottomNav(state.screen);
