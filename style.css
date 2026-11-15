@@ -56,13 +56,14 @@ body {
     object-fit: cover;
 }
 
-/* Header */
+/* Header (أبيض نضيف) */
 header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 15px 20px;
-    background: var(--bg-color);
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5ea;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -95,7 +96,7 @@ header {
 }
 
 .icon-btn {
-    background: #fff;
+    background: #f9f9f9;
     border: 1px solid var(--border);
     width: 40px;
     height: 40px;
@@ -147,17 +148,19 @@ main {
     color: #fff;
 }
 
-/* Bottom Nav */
+/* Bottom Nav (شفاف مع Blur) */
 .bottom-nav {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    background: #fff;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-between;
     padding: 10px 10px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid rgba(0,0,0,0.05);
     z-index: 100;
     overflow-x: auto;
 }
@@ -181,12 +184,6 @@ main {
 .nav-item.active {
     color: var(--primary);
     font-weight: 800;
-}
-
-.nav-item svg {
-    width: 22px;
-    height: 22px;
-    fill: currentColor;
 }
 
 /* Forms & Inputs */
