@@ -11,12 +11,10 @@
 </head>
 <body>
 
-    <!-- شاشة البداية (Splash) -->
     <div id="splash-screen" class="splash">
         <img src="logo.jpg" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;">
     </div>
 
-    <!-- التطبيق الأساسي -->
     <div id="app" class="hidden">
         <header id="main-header">
             <div class="header-brand">
@@ -27,6 +25,7 @@
                 </div>
             </div>
             <div style="display: flex; gap: 5px;">
+                <button class="icon-btn" onclick="navigate('branches')" title="الفروع">🔙</button>
                 <button class="icon-btn" onclick="location.reload(true)" title="تحديث">🔄</button>
                 <button class="icon-btn" onclick="openSettings()">⚙️</button>
                 <button class="icon-btn" onclick="logout()" style="color: var(--danger);">🚪</button>
@@ -38,7 +37,6 @@
         <nav id="bottom-nav" class="bottom-nav hidden"></nav>
     </div>
 
-    <!-- تحميل الملفات -->
     <script src="db.js"></script>
     <script src="settings.js"></script>
     <script src="login.js"></script>
@@ -48,20 +46,14 @@
     <script src="pages/goods.js"></script>
     <script src="app.js"></script>
 
-    <!-- تسجيل الـ Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js');
-            });
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); });
         }
     </script>
 
-    <!-- سكريبت لطباعة الأخطاء -->
     <script>
-        window.onerror = function(msg, url, line) {
-            alert('حدث خطأ: ' + msg + ' في السطر ' + line);
-        };
+        window.onerror = function(msg, url, line) { alert('حدث خطأ: ' + msg + ' في السطر ' + line); };
     </script>
 
 </body>
