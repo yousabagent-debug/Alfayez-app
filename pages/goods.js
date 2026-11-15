@@ -35,6 +35,11 @@ async function renderGoods() {
             <input type="text" placeholder="اسم الصنف أو الشركة..." onkeyup="searchItems(this.value)" style="margin-bottom:0; background:var(--bg-color);">
         </div>
 
+        <!-- زرار إضافة بضاعة تحت البحث -->
+        <button class="btn btn-primary" onclick="openAddBatchSheet()" style="margin-bottom: 15px; display:flex; justify-content:center; gap:10px;">
+            + إضافة بضاعة
+        </button>
+
         <div id="searchResults" class="hidden"></div>
 
         <h3 style="margin-top:25px; margin-bottom:15px;">الشركات</h3>
@@ -185,7 +190,6 @@ async function openCompany(companyName) {
 
 // ==== إضافة صنف (شاشة منبثقة) ====
 function openAddItemSheet(companyName) {
-    // إغلاق شاشة الشركة المفتوحة
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
@@ -237,7 +241,7 @@ async function saveNewItem(companyName, btn) {
     
     await addItem('items', { name, company: companyName, price, qty });
     btn.closest('.bottom-sheet-overlay').remove();
-    openCompany(companyName); // نرجع نفتح شاشة الشركة بعد الإضافة
+    openCompany(companyName);
 }
 
 // ==== تعديل اسم شركة ====
@@ -273,7 +277,6 @@ async function openManageGoods() {
                 <h2 style="color:var(--primary);">البضاعة المضافة</h2>
                 <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
             </div>
-            <button class="btn btn-primary" onclick="openAddBatchSheet()" style="margin-bottom:20px;">+ إضافة بضاعة</button>
 
             ${Object.keys(grouped).length === 0 ? '<p style="text-align:center; color:var(--text-muted);">لا يوجد بضاعة مضافة</p>' : ''}
 
@@ -357,7 +360,7 @@ async function saveNewBatch(btn) {
     }
     
     btn.closest('.bottom-sheet-overlay').remove();
-    openManageGoods(); // نرجع نفتح شاشة الإدارة
+    renderGoods(); // العودة لشاشة البضاعة
 }
 
 async function deleteAdditionDate(date, btn) {
