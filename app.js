@@ -58,11 +58,12 @@ async function initSplash() {
     }
 }
 
-// ==== الرسم (هيتوسع بعدين) ====
+// ==== الرسم ====
 async function render() {
     if (state.screen === 'login') return renderLoginScreen();
     if (state.screen === 'branches') return renderBranches();
     if (state.screen === 'dashboard') return renderDashboard();
+    if (state.screen === 'goods') return renderGoods();
     
     // شاشات تانية مؤقتة
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
