@@ -4,8 +4,6 @@ async function renderSupplies() {
     $('#main-header').style.display = 'flex';
     
     const allShifts = await getAll('shifts');
-    
-    // فلترة الورديات المقفولة (المحفوظة) للفرع الحالي
     const closedShifts = allShifts
         .filter(s => s.closed && s.branch_id === state.currentBranch.id)
         .sort((a,b) => b.id - a.id);
@@ -50,6 +48,17 @@ async function viewSupplyDetails(id) {
     const s = await getById('shifts', id);
     const items = s.invoice_items || [];
     
+    // جلب المصروفات المرتبطة بنفس الوردية (نفس التاريخ، النوع، والموظف)
+    const allExpenses = await getAll('expenses');
+    const relatedExpenses = allExpenses.filter(e => 
+        e.branch_id === s.branch_id && 
+        e.date === s.date && 
+        e.shift_type === s.type && 
+        e.employee === s.employee
+    );
+    
+    const totalRelatedExpenses = relatedExpenses.reduce((a,b) => a + (b.total || 0), 0);
+    
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet" style="max-height: 90vh; overflow-y: auto;">
@@ -91,24 +100,38 @@ async function viewSupplyDetails(id) {
                 </table>
             </div>
             
-            <div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:800; font-size:1.2rem;">
+            <div style="display:flex; justify-content:space-between; margin-top:20px; font-weight:800; font-size:1.2rem; padding-bottom:15px; border-bottom:1px solid var(--border);">
                 <span>الإجمالي:</span>
                 <span style="color:var(--primary);">${formatMoney(s.total)} ج</span>
             </div>
+
+            ${relatedExpenses.length > 0 ? `
+                <div class="card" style="margin-top:15px; background:#fff5f5; border:1px solid #ffcccc;">
+                    <h4 style="font-size:1rem; color:var(--danger); margin-bottom:10px;">💸 المصروفات المسجلة في هذه الوردية</h4>
+                    ${relatedExpenses.map(e => `
+                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #ffcccc;">
+                            <span style="font-size:0.9rem;">${e.title}</span>
+                            <span style="font-weight:700; color:var(--danger);">${formatMoney(e.total)} ج</span>
+                        </div>
+                    `).join('')}
+                    <div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:800;">
+                        <span>إجمالي المصروفات:</span>
+                        <span style="color:var(--danger);">${formatMoney(totalRelatedExpenses)} ج</span>
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `;
     document.body.appendChild(overlay);
     overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
 }
 
-// ==== حذف توريد (للمدير بس) ====
 async function deleteSupply(id, btn) {
     if (!confirm('هل أنت متأكد من حذف هذه الوردية؟ سيتم إرجاع الكميات للرصيد.')) return;
     
     const s = await getById('shifts', id);
     const items = s.invoice_items || [];
     
-    // إرجاع الكميات للرصيد
     for (let invItem of items) {
         if (invItem.id) {
             const dbItem = await getById('items', invItem.id);
