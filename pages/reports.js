@@ -130,17 +130,90 @@ async function sendReport() {
     const totalExpenses = expenses.reduce((a,b) => a + (b.total || 0), 0);
     const net = totalSales - totalExpenses;
 
-    const emailHtml = `
-        <div dir="rtl" style="font-family: Arial, sans-serif;">
-            <h2>تقرير فرع ${branchName} - ${today}</h2>
-            <p><b>إجمالي المبيعات:</b> ${formatMoney(totalSales)} ج</p>
-            <p><b>إجمالي المصروفات:</b> ${formatMoney(totalExpenses)} ج</p>
-            <p><b>الصافي:</b> ${formatMoney(net)} ج</p>
-            <hr>
-            <h3>سجل التحركات:</h3>
-            <ul>
-                ${activities.slice(0, 20).map(a => `<li>${a.date} - ${a.action} (${a.user_email}): ${a.details}</li>`).join('')}
-            </ul>
+    // تجهيز شكل الإيميل HTML هنا في التطبيق
+    let emailHtml = `
+        <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #0c2b21; margin: 0;">الفايز للزيوت والشحومات</h1>
+                <p style="color: #666; font-size: 14px;">تقرير الحركة اليومي</p>
+            </div>
+            
+            <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h2 style="color: #333;">فرع: ${branchName}</h2>
+                <p style="color: #666;">التاريخ: ${today}</p>
+                
+                <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 20px;">
+                    <div style="background-color: #e8f5e9; padding: 10px; border-radius: 8px; width: 30%;">
+                        <div style="color: #666; font-size: 12px;">المبيعات</div>
+                        <div style="font-size: 18px; font-weight: bold; color: #0c2b21;">${formatMoney(totalSales)}</div>
+                    </div>
+                    <div style="background-color: #ffebee; padding: 10px; border-radius: 8px; width: 30%;">
+                        <div style="color: #666; font-size: 12px;">المصروفات</div>
+                        <div style="font-size: 18px; font-weight: bold; color: #d32f2f;">${formatMoney(totalExpenses)}</div>
+                    </div>
+                    <div style="background-color: #e3f2fd; padding: 10px; border-radius: 8px; width: 30%;">
+                        <div style="color: #666; font-size: 12px;">الصافي</div>
+                        <div style="font-size: 18px; font-weight: bold; color: #1976d2;">${formatMoney(net)}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">الورديات</h3>
+                ${shifts.length === 0 ? '<p style="color: #999;">لا توجد ورديات محفوظة</p>' : ''}
+                ${shifts.map(s => `
+                    <div style="margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                            <span>${s.type} - ${s.employee}</span>
+                            <span>${formatMoney(s.total)} ج</span>
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-bottom: 5px;">${s.date}</div>
+                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #ddd;">
+                                    <th style="text-align: right; padding: 5px;">الصنف</th>
+                                    <th style="text-align: center; padding: 5px;">الكمية</th>
+                                    <th style="text-align: left; padding: 5px;">السعر</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${(s.invoice_items || []).map(i => `
+                                    <tr>
+                                        <td style="text-align: right; padding: 5px;">${i.name}</td>
+                                        <td style="text-align: center; padding: 5px;">${i.qty}</td>
+                                        <td style="text-align: left; padding: 5px;">${formatMoney(i.price)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">المصروفات</h3>
+                ${expenses.length === 0 ? '<p style="color: #999;">لا توجد مصروفات</p>' : ''}
+                <ul style="list-style: none; padding: 0;">
+                    ${expenses.map(e => `
+                        <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                            <span>${e.title}</span>
+                            <span style="font-weight: bold; color: #d32f2f;">${formatMoney(e.total)} ج</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            
+            <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">سجل التحركات</h3>
+                ${activities.length === 0 ? '<p style="color: #999;">لا توجد تحركات مسجلة</p>' : ''}
+                <ul style="list-style: none; padding: 0; font-size: 12px;">
+                    ${activities.slice(0, 20).map(a => `
+                        <li style="padding: 5px 0; border-bottom: 1px dotted #eee; color: #555;">
+                            <b>${a.user_email}</b> - ${a.action}: ${a.details} <span style="color: #999;">(${a.date})</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
         </div>
     `;
 
@@ -148,7 +221,7 @@ async function sendReport() {
         const { data, error } = await supabaseClient.functions.invoke('send-report', {
             body: {
                 to: emails.map(e => e.email),
-                subject: `تقرير فرع ${branchName} - ${today}`,
+                subject: `تقرير الحركة اليومي — ${branchName} — ${today}`,
                 html: emailHtml
             }
         });
