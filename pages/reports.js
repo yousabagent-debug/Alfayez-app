@@ -69,7 +69,6 @@ async function renderReports() {
     renderBottomNav('reports');
 }
 
-// ==== شاشة إضافة إيميل (بتصميم التطبيق) ====
 function openAddEmailModal() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -116,8 +115,48 @@ async function confirmManagerPass() {
     return true;
 }
 
+// ==== إرسال التقرير ====
 async function sendReport() {
     const emails = await getAll('report_emails');
     if (emails.length === 0) return alert('أضف إيميل أولاً');
-    alert('تم تجهيز التقرير! سيتم إرساله فعلياً عند ربط التطبيق بالسيرفر (Backend).');
+
+    const branchName = state.currentBranch.name;
+    const today = getToday();
+    const shifts = (await getAll('shifts')).filter(s => s.closed && s.branch_id === state.currentBranch.id);
+    const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
+    const activities = await getAll('activities');
+
+    const totalSales = shifts.reduce((a,b) => a + (b.total || 0), 0);
+    const totalExpenses = expenses.reduce((a,b) => a + (b.total || 0), 0);
+    const net = totalSales - totalExpenses;
+
+    const emailHtml = `
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>تقرير فرع ${branchName} - ${today}</h2>
+            <p><b>إجمالي المبيعات:</b> ${formatMoney(totalSales)} ج</p>
+            <p><b>إجمالي المصروفات:</b> ${formatMoney(totalExpenses)} ج</p>
+            <p><b>الصافي:</b> ${formatMoney(net)} ج</p>
+            <hr>
+            <h3>سجل التحركات:</h3>
+            <ul>
+                ${activities.slice(0, 20).map(a => `<li>${a.date} - ${a.action} (${a.user_email}): ${a.details}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('send-report', {
+            body: {
+                to: emails.map(e => e.email),
+                subject: `تقرير فرع ${branchName} - ${today}`,
+                html: emailHtml
+            }
+        });
+
+        if (error) throw error;
+        alert('تم إرسال التقرير بنجاح!');
+    } catch (error) {
+        console.error(error);
+        alert('حدث خطأ في إرسال التقرير: ' + error.message);
+    }
 }
