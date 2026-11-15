@@ -70,27 +70,17 @@ function openAddItemModal() {
     overlay.innerHTML = `
         <div class="bottom-sheet">
             <div class="bottom-sheet-header"><h2>إضافة صنف للفاتورة</h2><button class="close-btn" onclick="document.getElementById('addItemOverlay').remove()">✖</button></div>
-            
             <div class="tabs">
                 <div class="tab active" onclick="switchAddTab('goods', this)">من البضاعة</div>
                 <div class="tab" onclick="switchAddTab('manual', this)">إدخال يدوي</div>
             </div>
-
             <div id="tab-goods">
-                <div class="input-group">
-                    <label>الشركة</label>
-                    <select id="addCompanySelect" onchange="updateItemSelect()"><option value="">كل الشركات</option></select>
-                </div>
-                <div class="input-group">
-                    <label>الصنف</label>
-                    <select id="addItemSelect"><option value="">اختر الصنف</option></select>
-                </div>
-                
+                <div class="input-group"><label>الشركة</label><select id="addCompanySelect" onchange="updateItemSelect()"><option value="">كل الشركات</option></select></div>
+                <div class="input-group"><label>الصنف</label><select id="addItemSelect"><option value="">اختر الصنف</option></select></div>
                 <div style="display:flex; gap:10px;">
                     <div class="input-group" style="flex:1;"><label>الكمية</label><input type="number" id="addQty" value="1" step="0.25"></div>
                     <div class="input-group" style="flex:1;"><label>سعر الوحدة</label><input type="text" id="addPrice" readonly placeholder="تلقائي" style="background:#e8e8e8;"></div>
                 </div>
-                
                 <div class="chips-container">
                     <div class="chip" onclick="setAddQty(0.25)">ربع</div>
                     <div class="chip" onclick="setAddQty(0.5)">نصف</div>
@@ -100,7 +90,6 @@ function openAddItemModal() {
                 </div>
                 <button class="btn-save" onclick="addItemToInvoice('goods')">إضافة للفاتورة</button>
             </div>
-
             <div id="tab-manual" class="hidden">
                 <div class="input-group"><label>اسم الصنف (إدخال يدوي)</label><input type="text" id="manualName" placeholder="اكتب اسم الصنف..."></div>
                 <div style="display:flex; gap:10px;">
@@ -170,6 +159,7 @@ async function addItemToInvoice(mode) {
     state.activeShift.invoice_items = state.activeShift.invoiceItems;
     
     await updateItem('shifts', state.activeShift);
+    await logActivity('إضافة صنف للفاتورة', `تمت إضافة ${item.name} بكمية ${item.qty}`);
     $('#addItemOverlay').remove();
     renderInvoice();
 }
@@ -200,6 +190,7 @@ async function closeShift(id) {
     s.closed = true;
     s.invoice_items = items;
     await updateItem('shifts', s);
+    await logActivity('قفل وردية', `تم قفل وردية ${s.type} بإجمالي ${s.total}`);
     state.activeShift = null;
     alert('تم حفظ الفاتورة وخصم الكميات بنجاح!');
     navigate('supplies');
