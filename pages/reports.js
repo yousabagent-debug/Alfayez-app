@@ -3,13 +3,11 @@ async function renderReports() {
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
     
-    // جلب البيانات
     const activities = await getAll('activities');
     const reportEmails = (await getAll('report_emails')).filter(e => e.branch_id === state.currentBranch.id || !e.branch_id);
     const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
     const shifts = (await getAll('shifts')).filter(s => s.closed && s.branch_id === state.currentBranch.id);
     
-    // حسابات
     const totalExpenses = expenses.reduce((a,b) => a + (b.total || 0), 0);
     const totalSales = shifts.reduce((a,b) => a + (b.total || 0), 0);
     const net = totalSales - totalExpenses;
@@ -18,7 +16,6 @@ async function renderReports() {
         <h2 style="margin: 15px 0;">التقرير</h2>
         <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">كل حركة في اليوم: مبيعات، مصروفات، وتحركات المستخدمين</p>
 
-        <!-- كارت إيميلات التقارير -->
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="font-size:1.1rem;">📧 إيميلات التقارير</h3>
@@ -37,7 +34,6 @@ async function renderReports() {
             </button>
         </div>
 
-        <!-- كروت الإحصائيات -->
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
             <div class="card" style="margin:0; padding:15px; text-align:center;">
                 <div style="font-size:0.75rem; color:var(--text-muted);">المبيعات</div>
@@ -53,7 +49,6 @@ async function renderReports() {
             </div>
         </div>
 
-        <!-- سجل التحركات -->
         <div class="card">
             <h3 style="font-size:1.1rem; margin-bottom:15px;">📋 سجل التحركات</h3>
             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">كل حركة يقوم بها المستخدمون مسجلة هنا</p>
@@ -74,7 +69,6 @@ async function renderReports() {
     renderBottomNav('reports');
 }
 
-// ==== إضافة إيميل جديد ====
 async function addReportEmail() {
     const email = prompt('أدخل البريد الإلكتروني:');
     if (!email || !email.includes('@')) return alert('بريد غير صالح');
@@ -97,10 +91,8 @@ async function confirmManagerPass() {
     return true;
 }
 
-// ==== إرسال التقرير (هيتبرمج مع الـ Backend) ====
 async function sendReport() {
     const emails = await getAll('report_emails');
     if (emails.length === 0) return alert('أضف إيميل أولاً');
-    
     alert('تم تجهيز التقرير! سيتم إرساله فعلياً عند ربط التطبيق بالسيرفر (Backend).');
 }
