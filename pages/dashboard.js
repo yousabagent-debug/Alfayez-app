@@ -104,3 +104,23 @@ async function renderDashboard() {
     
     renderBottomNav('dashboard');
 }
+
+// ==== شريط التنقل السفلي ====
+function renderBottomNav(active) {
+    const navs = [
+        { id: 'dashboard', name: 'نظرة', icon: '📊' },
+        { id: 'goods', name: 'البضاعة', icon: '📦' },
+        { id: 'shifts', name: 'الورديات', icon: '⏱️' },
+        { id: 'supplies', name: 'التوريدات', icon: '📋' },
+        { id: 'expenses', name: 'المصروفات', icon: '💸' },
+        { id: 'reports', name: 'تقرير', icon: '📈' }
+    ];
+
+    $('#bottom-nav').classList.remove('hidden');
+    $('#bottom-nav').innerHTML = navs.map(n => `
+        <button class="nav-item ${active === n.id ? 'active' : ''}" onclick="navigate('${n.id}')">
+            <span style="font-size:1.2rem;">${n.icon}</span>
+            <span>${n.name}</span>
+        </button>
+    `).join('');
+}
