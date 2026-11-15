@@ -35,7 +35,6 @@ async function renderGoods() {
             <input type="text" placeholder="اسم الصنف أو الشركة..." onkeyup="searchItems(this.value)" style="margin-bottom:0; background:var(--bg-color);">
         </div>
 
-        <!-- زرار إضافة بضاعة تحت البحث -->
         <button class="btn btn-primary" onclick="openAddBatchSheet()" style="margin-bottom: 15px; display:flex; justify-content:center; gap:10px;">
             + إضافة بضاعة
         </button>
@@ -70,13 +69,19 @@ async function renderGoods() {
     renderBottomNav('goods');
 }
 
-// ==== البحث عن صنف ====
+// ==== البحث عن صنف (تم تصليحه) ====
 async function searchItems(query) {
     const resDiv = $('#searchResults');
-    if (!query) { resDiv.classList.add('hidden'); return; }
+    if (!query.trim()) { resDiv.classList.add('hidden'); return; }
     
     const items = await getAll('items');
-    const res = items.filter(i => i.name.includes(query) || i.company.includes(query));
+    const searchTerm = query.trim().toLowerCase();
+    
+    // البحث في اسم الصنف أو اسم الشركة
+    const res = items.filter(i => 
+        i.name.toLowerCase().includes(searchTerm) || 
+        i.company.toLowerCase().includes(searchTerm)
+    );
     
     resDiv.classList.remove('hidden');
     resDiv.innerHTML = res.length ? res.map(i => `
@@ -95,7 +100,7 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-// ==== إضافة شركة (شاشة منبثقة) ====
+// ==== إضافة شركة ====
 function openAddCompanySheet() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -108,14 +113,6 @@ function openAddCompanySheet() {
             <div class="input-group">
                 <label>اسم الشركة</label>
                 <input type="text" id="newCompanyName" placeholder="مثال: التعاون">
-            </div>
-            <div class="input-group">
-                <label>رقم الهاتف (اختياري)</label>
-                <input type="text" id="newCompanyPhone" placeholder="01xxxxxxxxx">
-            </div>
-            <div class="input-group">
-                <label>ملاحظات (اختياري)</label>
-                <input type="text" id="newCompanyNotes" placeholder="أي ملاحظات إضافية">
             </div>
             
             <button class="btn-save" onclick="saveNewCompany(this)">حفظ الشركة</button>
@@ -158,7 +155,7 @@ async function openCompany(companyName) {
 
             <div style="display:flex; gap:10px; margin-bottom:20px;">
                 <button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="openAddItemSheet('${companyName}')">+ إضافة صنف</button>
-                <button class="btn btn-outline" style="flex:1; border-color:var(--danger); color:var(--danger);" onclick="editCompanyName('${companyName}')">تعديل الشركة</button>
+                <button class="btn btn-outline" style="flex:1; border-color:var(--danger); color:var(--danger);" onclick="openEditCompanySheet('${companyName}')">تعديل الشركة</button>
             </div>
 
             <div class="table-responsive">
@@ -188,7 +185,61 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== إضافة صنف (شاشة منبثقة) ====
+// ==== تعديل اسم الشركة (بالشكل الجديد) ====
+function openEditCompanySheet(oldName) {
+    document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
+
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header">
+                <h2>تعديل الشركة</h2>
+                <button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            <div class="input-group">
+                <label>اسم الشركة الجديد</label>
+                <input type="text" id="editCompanyNameInput" value="${oldName}">
+            </div>
+            
+            <button class="btn-save" onclick="saveEditCompany('${oldName}', this)">حفظ التعديل</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveEditCompany(oldName, btn) {
+    const newName = document.getElementById('editCompanyNameInput').value.trim();
+    if (!newName || newName === oldName) {
+        btn.closest('.bottom-sheet-overlay').remove();
+        return openCompany(oldName); // نرجع لشاشة الشركة لو مفيش تغيير
+    }
+    
+    btn.innerText = 'جاري الحفظ...';
+    btn.disabled = true;
+    
+    // تحديث الشركة
+    const companies = await getAll('companies');
+    const comp = companies.find(c => c.name === oldName);
+    if (comp) { 
+        comp.name = newName; 
+        await updateItem('companies', comp); 
+    }
+    
+    // تحديث كل الأصناف اللي كانت تابعة للشركة القديمة
+    const items = await getAll('items');
+    for (let item of items) {
+        if (item.company === oldName) { 
+            item.company = newName; 
+            await updateItem('items', item); 
+        }
+    }
+    
+    btn.closest('.bottom-sheet-overlay').remove();
+    renderGoods(); // نرجع لشاشة البضاعة الرئيسية
+}
+
+// ==== إضافة صنف ====
 function openAddItemSheet(companyName) {
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
 
@@ -216,10 +267,6 @@ function openAddItemSheet(companyName) {
                 </div>
             </div>
             
-            <div style="background:#f4f4f4; padding:10px; border-radius:8px; font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; text-align:right;">
-                سعر الصنف يُحدّد هنا فقط، ويُطبّق تلقائياً على فواتير الورديات الجديدة.
-            </div>
-            
             <button class="btn-save" onclick="saveNewItem('${companyName}', this)">حفظ الصنف</button>
         </div>
     `;
@@ -241,24 +288,7 @@ async function saveNewItem(companyName, btn) {
     
     await addItem('items', { name, company: companyName, price, qty });
     btn.closest('.bottom-sheet-overlay').remove();
-    openCompany(companyName);
-}
-
-// ==== تعديل اسم شركة ====
-async function editCompanyName(oldName) {
-    const newName = prompt('اسم الشركة الجديد:', oldName);
-    if (newName && newName !== oldName) {
-        const companies = await getAll('companies');
-        const comp = companies.find(c => c.name === oldName);
-        if (comp) { comp.name = newName; await updateItem('companies', comp); }
-        
-        const items = await getAll('items');
-        for (let item of items) {
-            if (item.company === oldName) { item.company = newName; await updateItem('items', item); }
-        }
-        document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
-        renderGoods();
-    }
+    openCompany(companyName); // نرجع لشاشة الشركة
 }
 
 // ==== إدارة البضاعة ====
