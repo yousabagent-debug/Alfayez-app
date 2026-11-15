@@ -1,5 +1,8 @@
 // ==== شاشة اختيار الفروع ====
 async function renderBranches() {
+    // إرجاع لون الخلفية الطبيعي بعد شاشة الدخول
+    document.body.style.background = '#f9f9f9';
+    
     // إظهار الهيدر
     $('#main-header').style.display = 'flex';
     
