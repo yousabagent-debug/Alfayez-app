@@ -12,8 +12,9 @@ async function renderGoods() {
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin:0;">البضاعة الموجودة</h2>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; flex-wrap: wrap;">
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openManageGoods()">إدارة البضاعة</button>
+                <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddBatchSheet()">+ إضافة بضاعة</button>
                 <button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddCompanySheet()">+ شركة</button>
             </div>
         </div>
@@ -35,11 +36,7 @@ async function renderGoods() {
             <input type="text" placeholder="اسم الصنف أو الشركة..." onkeyup="searchItems(this.value)" style="margin-bottom:0; background:var(--bg-color);">
         </div>
 
-        <button class="btn btn-primary" onclick="openAddBatchSheet()" style="margin-bottom: 15px; display:flex; justify-content:center; gap:10px;">
-            + إضافة بضاعة
-        </button>
-
-        <div id="searchResults" class="hidden"></div>
+        <div id="searchResults" class="hidden" style="margin-top: 15px;"></div>
 
         <h3 style="margin-top:25px; margin-bottom:15px;">الشركات</h3>
         <div id="companiesList">
@@ -69,7 +66,7 @@ async function renderGoods() {
     renderBottomNav('goods');
 }
 
-// ==== البحث عن صنف (تم تصليحه) ====
+// ==== البحث عن صنف ====
 async function searchItems(query) {
     const resDiv = $('#searchResults');
     if (!query.trim()) { resDiv.classList.add('hidden'); return; }
@@ -77,7 +74,6 @@ async function searchItems(query) {
     const items = await getAll('items');
     const searchTerm = query.trim().toLowerCase();
     
-    // البحث في اسم الصنف أو اسم الشركة
     const res = items.filter(i => 
         i.name.toLowerCase().includes(searchTerm) || 
         i.company.toLowerCase().includes(searchTerm)
@@ -185,7 +181,7 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== تعديل اسم الشركة (بالشكل الجديد) ====
+// ==== تعديل اسم الشركة ====
 function openEditCompanySheet(oldName) {
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
 
@@ -212,31 +208,23 @@ async function saveEditCompany(oldName, btn) {
     const newName = document.getElementById('editCompanyNameInput').value.trim();
     if (!newName || newName === oldName) {
         btn.closest('.bottom-sheet-overlay').remove();
-        return openCompany(oldName); // نرجع لشاشة الشركة لو مفيش تغيير
+        return openCompany(oldName);
     }
     
     btn.innerText = 'جاري الحفظ...';
     btn.disabled = true;
     
-    // تحديث الشركة
     const companies = await getAll('companies');
     const comp = companies.find(c => c.name === oldName);
-    if (comp) { 
-        comp.name = newName; 
-        await updateItem('companies', comp); 
-    }
+    if (comp) { comp.name = newName; await updateItem('companies', comp); }
     
-    // تحديث كل الأصناف اللي كانت تابعة للشركة القديمة
     const items = await getAll('items');
     for (let item of items) {
-        if (item.company === oldName) { 
-            item.company = newName; 
-            await updateItem('items', item); 
-        }
+        if (item.company === oldName) { item.company = newName; await updateItem('items', item); }
     }
     
     btn.closest('.bottom-sheet-overlay').remove();
-    renderGoods(); // نرجع لشاشة البضاعة الرئيسية
+    renderGoods();
 }
 
 // ==== إضافة صنف ====
@@ -288,7 +276,7 @@ async function saveNewItem(companyName, btn) {
     
     await addItem('items', { name, company: companyName, price, qty });
     btn.closest('.bottom-sheet-overlay').remove();
-    openCompany(companyName); // نرجع لشاشة الشركة
+    openCompany(companyName);
 }
 
 // ==== إدارة البضاعة ====
@@ -335,13 +323,17 @@ async function openManageGoods() {
     document.body.appendChild(overlay);
 }
 
-// ==== إضافة بضاعة (شاشة جديدة بقوائم اختيار) ====
+// ==== إضافة بضاعة (متعددة الشركات والأصناف) ====
+let batchItemsArray = []; // مصفوفة مؤقتة
+
 async function openAddBatchSheet() {
+    batchItemsArray = []; // تصفير المصفوفة
     const companies = await getAll('companies');
     
     const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.id = 'batchOverlay';
     overlay.innerHTML = `
-        <div class="bottom-sheet">
+        <div class="bottom-sheet" style="max-height: 95vh;">
             <div class="bottom-sheet-header">
                 <h2>إضافة بضاعة</h2>
                 <button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
@@ -358,18 +350,26 @@ async function openAddBatchSheet() {
                     ${companies.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
                 </select>
             </div>
-            <div class="input-group">
-                <label>الصنف</label>
-                <select id="batchItemName">
-                    <option value="">اختر الصنف...</option>
-                </select>
+            
+            <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:15px;">
+                <div class="input-group" style="flex:2; margin-bottom:0;">
+                    <label>الصنف</label>
+                    <select id="batchItemName">
+                        <option value="">اختر الصنف...</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex:1; margin-bottom:0;">
+                    <label>الكمية</label>
+                    <input type="number" id="batchQty" placeholder="0">
+                </div>
+                <button class="btn btn-primary" style="width:auto; padding:14px 20px; margin:0;" onclick="addBatchItemToList()">أضف</button>
             </div>
-            <div class="input-group">
-                <label>الكمية المضافة</label>
-                <input type="number" id="batchQty" placeholder="0">
+
+            <div id="batchListContainer" style="margin-bottom:15px; max-height:200px; overflow-y:auto;">
+                <!-- هنا هتظهر الأصناف اللي تمت إضافتها -->
             </div>
             
-            <button class="btn-save" onclick="saveNewBatch(this)">حفظ الإضافة</button>
+            <button class="btn-save" onclick="saveAllBatchItems(this)">حفظ الكل</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -391,24 +391,75 @@ async function updateBatchItems() {
     });
 }
 
-async function saveNewBatch(btn) {
-    const date = document.getElementById('batchDate').value;
+function addBatchItemToList() {
     const company = document.getElementById('batchCompany').value;
     const itemName = document.getElementById('batchItemName').value;
     const qty = parseFloat(document.getElementById('batchQty').value);
+    
+    if (!company || !itemName || !qty) return alert('اختر الشركة والصنف والكمية');
+    
+    // إضافة الصنف للمصفوفة (مع اسم الشركة)
+    batchItemsArray.push({ company, item_name: itemName, qty: qty });
+    
+    // تفريغ الخانات
+    document.getElementById('batchItemName').value = '';
+    document.getElementById('batchQty').value = '';
+    
+    // عرض القائمة
+    renderBatchList();
+}
 
-    if (!date || !company || !itemName || !qty) return alert('اكمل البيانات');
+function renderBatchList() {
+    const container = document.getElementById('batchListContainer');
+    if (batchItemsArray.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">لم تتم إضافة أصناف بعد</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div style="background:#f4f4f4; border-radius:12px; padding:10px;">
+            ${batchItemsArray.map((item, index) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #ddd;">
+                    <div>
+                        <div style="font-weight:700; font-size:0.9rem;">${item.item_name}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${item.company}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="color:var(--success); font-weight:700;">+${item.qty}</span>
+                        <button class="icon-btn" style="width:25px; height:25px; font-size:0.8rem; background:#fff;" onclick="removeBatchItem(${index})">🗑️</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
 
+function removeBatchItem(index) {
+    batchItemsArray.splice(index, 1);
+    renderBatchList();
+}
+
+async function saveAllBatchItems(btn) {
+    const date = document.getElementById('batchDate').value;
+    
+    if (!date) return alert('اختر التاريخ');
+    if (batchItemsArray.length === 0) return alert('أضف صنف واحد على الأقل');
+    
     btn.innerText = 'جاري الحفظ...';
     btn.disabled = true;
-
-    await addItem('additions', { date, company, item_name: itemName, qty });
-
+    
     const items = await getAll('items');
-    const existingItem = items.find(i => i.name === itemName && i.company === company);
-    if (existingItem) {
-        existingItem.qty = (existingItem.qty || 0) + qty;
-        await updateItem('items', existingItem);
+    
+    for (let batchItem of batchItemsArray) {
+        // إضافة للجدول
+        await addItem('additions', { date, company: batchItem.company, item_name: batchItem.item_name, qty: batchItem.qty });
+        
+        // تحديث كمية الصنف في جدول الأصناف
+        const existingItem = items.find(i => i.name === batchItem.item_name && i.company === batchItem.company);
+        if (existingItem) {
+            existingItem.qty = (existingItem.qty || 0) + batchItem.qty;
+            await updateItem('items', existingItem);
+        }
     }
     
     btn.closest('.bottom-sheet-overlay').remove();
