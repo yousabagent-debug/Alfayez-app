@@ -72,6 +72,10 @@ async function renderReports() {
 async function addReportEmail() {
     const email = prompt('أدخل البريد الإلكتروني:');
     if (!email || !email.includes('@')) return alert('بريد غير صالح');
+    
+    // تأكيد إن الكود وصل هنا
+    alert('جاري محاولة إضافة الإيميل: ' + email);
+    
     await addItem('report_emails', { email, branch_id: state.currentBranch.id });
     renderReports();
 }
