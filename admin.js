@@ -115,4 +115,124 @@ async function renderPriceManager() {
                     <button class="btn btn-outline" style="width:100%; margin-bottom:10px; font-size:0.8rem;" onclick="openAddItemSheetAdmin('${c.name}')">+ إضافة صنف للشركة</button>
                     <div class="table-responsive">
                         <table style="width:100%; border-collapse:collapse;">
-                            <thead><tr style="background:var(--bg-color);"><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;
+                            <thead><tr style="background:var(--bg-color);"><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem; width:100px;">السعر</th><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem; width:60px;">حذف</th></tr></thead>
+                            <tbody>
+                                ${compItems.length ? compItems.map(item => `
+                                    <tr>
+                                        <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
+                                        <td style="padding:8px; border-bottom:1px solid var(--border);">
+                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice(${item.id}, this.value)">
+                                        </td>
+                                        <td style="padding:8px; border-bottom:1px solid var(--border); text-align:center;">
+                                            <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="startDeleteItem(${item.id})">🗑️</button>
+                                        </td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد أصناف.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    $('#main-content').innerHTML = html;
+    renderBottomNav('dashboard');
+}
+
+function toggleAdminCompanyItems(companyName) {
+    const safeId = companyName.replace(/\s/g, '');
+    const el = document.getElementById(`admin-items-${safeId}`);
+    if (el) el.classList.toggle('hidden');
+}
+
+async function updatePrice(itemId, newPrice) {
+    if (!newPrice) return;
+    const { error } = await supabaseClient.from('items').update({ price: parseFloat(newPrice) }).eq('id', itemId);
+    if (error) { alert('خطأ في تحديث السعر'); return; }
+    alert('تم تحديث السعر بنجاح!');
+}
+
+// ==== إضافة شركة من شاشة الإدارة ====
+function openAddCompanySheetAdmin() {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header"><h2>شركة جديدة</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group"><label>اسم الشركة</label><input type="text" id="adminNewCompanyName" placeholder="مثال: التعاون"></div>
+            <button class="btn-save" onclick="saveNewCompanyAdmin(this)">حفظ الشركة</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveNewCompanyAdmin(btn) {
+    const name = document.getElementById('adminNewCompanyName').value.trim();
+    if (!name) { document.getElementById('adminNewCompanyName').style.borderColor = 'red'; return; }
+    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+    await addItem('companies', { name });
+    btn.closest('.bottom-sheet-overlay').remove();
+    renderPriceManager();
+}
+
+// ==== إضافة صنف من شاشة الإدارة ====
+function openAddItemSheetAdmin(companyName) {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header"><h2>صنف جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group"><label>اسم الصنف</label><input type="text" id="adminNewItemName" placeholder="مثال: زيت 1 لتر"></div>
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1;"><label>الكمية</label><input type="number" id="adminNewItemQty" value="0"></div>
+                <div class="input-group" style="flex:1;"><label>السعر</label><input type="number" id="adminNewItemPrice" value="0"></div>
+            </div>
+            <button class="btn-save" onclick="saveNewItemAdmin('${companyName}', this)">حفظ الصنف</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveNewItemAdmin(companyName, btn) {
+    const name = document.getElementById('adminNewItemName').value.trim();
+    const qty = parseFloat(document.getElementById('adminNewItemQty').value) || 0;
+    const price = parseFloat(document.getElementById('adminNewItemPrice').value) || 0;
+    if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
+    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+    await addItem('items', { name, company: companyName, price, qty });
+    btn.closest('.bottom-sheet-overlay').remove();
+    renderPriceManager();
+}
+
+// ==== حذف الشركة (3 ضغطات) ====
+async function startDeleteCompany(companyName) {
+    const confirm1 = confirm(`هل تريد حذف شركة "${companyName}"؟`);
+    if (!confirm1) return;
+    const confirm2 = confirm(`تأكيد ثاني: سيتم حذف كل أصناف "${companyName}"!`);
+    if (!confirm2) return;
+    const confirm3 = confirm(`تأكيد أخير: هل أنت متأكد 100% من الحذف؟`);
+    if (!confirm3) return;
+
+    const companies = await getAll('companies');
+    const comp = companies.find(c => c.name === companyName);
+    if (comp) await deleteItem('companies', comp.id);
+    
+    const items = await getAll('items');
+    for (let item of items) { if (item.company === companyName) { await deleteItem('items', item.id); } }
+    
+    alert('تم حذف الشركة وكل أصنافها');
+    renderPriceManager();
+}
+
+// ==== حذف الصنف (3 ضغطات) ====
+async function startDeleteItem(itemId) {
+    const confirm1 = confirm('هل تريد حذف هذا الصنف؟');
+    if (!confirm1) return;
+    const confirm2 = confirm('تأكيد ثاني: سيتم حذف الصنف نهائياً!');
+    if (!confirm2) return;
+    const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟');
+    if (!confirm3) return;
+
+    await deleteItem('items', itemId);
+    alert('تم حذف الصنف');
+    renderPriceManager();
+}
