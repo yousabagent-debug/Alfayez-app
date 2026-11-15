@@ -26,7 +26,8 @@
                     <span id="branch-name">اختيار الفرع</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 5px;">
+                <button class="icon-btn" onclick="location.reload(true)" title="تحديث">🔄</button>
                 <button class="icon-btn" onclick="openSettings()">⚙️</button>
                 <button class="icon-btn" onclick="logout()" style="color: var(--danger);">🚪</button>
             </div>
@@ -54,7 +55,7 @@
         }
     </script>
 
-    <!-- سكريبت لطباعة الأخطاء (للتأكد فقط) -->
+    <!-- سكريبت لطباعة الأخطاء -->
     <script>
         window.onerror = function(msg, url, line) {
             alert('حدث خطأ: ' + msg + ' في السطر ' + line);
