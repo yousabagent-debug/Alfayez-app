@@ -2,7 +2,7 @@
 async function renderInvoice() {
     if (!state.activeShift) return navigate('shifts');
     const s = state.activeShift;
-    const items = s.invoiceItems || s.invoice_items || [];
+    const items = s.invoiceItems || s.invoice_items || s.invoice_data || [];
     
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
@@ -156,27 +156,28 @@ async function addItemToInvoice(mode) {
     if(!state.activeShift.invoiceItems) state.activeShift.invoiceItems = [];
     state.activeShift.invoiceItems.push(item);
     state.activeShift.total = (state.activeShift.total || 0) + (item.price * item.qty);
-    state.activeShift.invoice_items = state.activeShift.invoiceItems;
     
-    await updateItem('shifts', state.activeShift);
-    await logActivity('إضافة صنف للفاتورة', `تمت إضافة ${item.name} بكمية ${item.qty}`);
+    // بنبعت البيانات في العمود الجديد invoice_data
+    await updateItem('shifts', { id: state.activeShift.id, invoice_data: state.activeShift.invoiceItems, total: state.activeShift.total });
+    
     $('#addItemOverlay').remove();
     renderInvoice();
 }
 
 async function updateInvoiceQty(idx, newQty) {
     const s = state.activeShift;
-    const items = s.invoiceItems || s.invoice_items;
+    const items = s.invoiceItems || s.invoice_items || s.invoice_data;
     items[idx].qty = parseFloat(newQty);
     s.total = items.reduce((a,b) => a + (b.price * b.qty), 0);
-    s.invoiceItems = items; s.invoice_items = items;
-    await updateItem('shifts', s);
+    s.invoiceItems = items;
+    
+    await updateItem('shifts', { id: s.id, invoice_data: items, total: s.total });
     renderInvoice();
 }
 
 async function closeShift(id) {
     const s = state.activeShift;
-    const items = s.invoiceItems || s.invoice_items || [];
+    const items = s.invoiceItems || s.invoice_items || s.invoice_data || [];
     
     for (let invItem of items) {
         if (invItem.id) {
@@ -187,10 +188,10 @@ async function closeShift(id) {
             }
         }
     }
-    s.closed = true;
-    s.invoice_items = items;
-    await updateItem('shifts', s);
-    await logActivity('قفل وردية', `تم قفل وردية ${s.type} بإجمالي ${s.total}`);
+    
+    // بنقفل الوردية ونبعت البيانات
+    await updateItem('shifts', { id: s.id, closed: true, invoice_data: items });
+    
     state.activeShift = null;
     alert('تم حفظ الفاتورة وخصم الكميات بنجاح!');
     navigate('supplies');
