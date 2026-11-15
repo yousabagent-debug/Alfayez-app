@@ -283,7 +283,7 @@ th, td { padding: 12px 8px; text-align: right; font-size: 0.9rem; border-bottom:
 th { color: var(--text-muted); font-weight: 500; }
 td input { width: 70px; text-align: center; padding: 8px; margin: 0; }
 
-/* Bottom Sheet Modal */
+/* Bottom Sheet Modal (تصميم الشاشات المنبثقة) */
 .bottom-sheet-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -302,55 +302,61 @@ td input { width: 70px; text-align: center; padding: 8px; margin: 0; }
     animation: slideUp 0.3s ease;
     max-height: 90vh;
     overflow-y: auto;
+    position: relative;
 }
 @keyframes slideUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
 }
 
-/* Tabs */
-.tabs {
+.bottom-sheet-header {
     display: flex;
-    background: #e8e8e8;
-    border-radius: 12px;
-    padding: 4px;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
 }
-.tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: 0.2s;
+.bottom-sheet-header h2 {
+    font-size: 1.4rem;
+    color: var(--primary);
 }
-.tab.active {
-    background: #fff;
-    color: var(--text-main);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+.bottom-sheet-header .close-btn {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
 }
 
-/* Chips */
-.chips-container {
-    display: flex;
-    gap: 8px;
+.input-group {
     margin-bottom: 15px;
-    flex-wrap: wrap;
 }
-.chip {
-    padding: 8px 16px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: #fff;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
+.input-group label {
+    text-align: right;
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: var(--text-main);
 }
-.chip.active {
-    background: var(--primary);
-    color: #fff;
+.input-group input {
+    background: #fdfdfd;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 1rem;
+}
+.input-group input:focus {
     border-color: var(--primary);
+}
+
+.btn-save {
+    background: #8fa89e;
+    color: #fff;
+    font-size: 1.1rem;
+    padding: 15px;
+    border-radius: 12px;
+    width: 100%;
+    border: none;
+    font-weight: 700;
+    margin-top: 10px;
+    cursor: pointer;
 }
