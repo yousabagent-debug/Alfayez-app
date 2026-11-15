@@ -48,19 +48,17 @@ async function renderAdminPanel() {
     }
     html += '</div>';
     $('#main-content').innerHTML = html;
+    renderBottomNav('dashboard');
 }
 
 async function approveUser(userId) {
     const branches = await getAll('branches');
     let branchOptions = branches.map(b => `${b.id}: ${b.name}`).join('\n');
     const choice = prompt(`اختر رقم الفرع للموظف:\n${branchOptions}`);
-    
     if (!choice) return;
     const branchId = parseInt(choice);
-
     const { error } = await supabaseClient.from('profiles').update({ status: 'approved', branch_id: branchId }).eq('id', userId);
     if (error) { alert('خطأ في الموافقة'); return; }
-    
     alert('تمت الموافقة وتعيين الفرع بنجاح!');
     renderAdminPanel();
 }
@@ -73,63 +71,48 @@ async function changeBranch(userId, branchId) {
 }
 
 async function deleteUserProfile(userId) {
-    if (!confirm('هل أنت متأكد من حذف هذا الحساب من التطبيق؟ (لن يمسح من جوجل)')) return;
+    if (!confirm('هل أنت متأكد من حذف هذا الحساب من التطبيق؟')) return;
     const { error } = await supabaseClient.from('profiles').delete().eq('id', userId);
     if (error) { alert('خطأ في الحذف'); return; }
     renderAdminPanel();
 }
 
-// ==== إدارة الأسعار ====
+// ==========================================
+// ==== إدارة الأسعار والشركات (للمدير فقط) ====
+// ==========================================
+
 async function renderPriceManager() {
     const companies = await getAll('companies');
     const items = await getAll('items');
     
     let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
-            <h2>إدارة الأسعار</h2>
+            <h2>إدارة الأسعار والشركات</h2>
             <button class="icon-btn" onclick="navigate('branches')">🔙</button>
         </div>
-        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">أي تعديل في السعر هنا سيسري على كل الفروع فوراً</p>
-        <div id="companiesList">
+        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">تحكم كامل في الشركات والأسعار</p>
+        
+        <button class="btn btn-primary" onclick="openAddCompanySheetAdmin()" style="margin-bottom: 20px;">+ إضافة شركة جديدة</button>
+
+        <div id="adminCompaniesList">
     `;
 
     companies.forEach(c => {
         const compItems = items.filter(i => i.company === c.name);
-        if (compItems.length === 0) return;
-        
         html += `
             <div class="card" style="padding:15px; margin-bottom:15px; border:1px solid var(--border);">
-                <h3 style="color:var(--primary); margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;">${c.name}</h3>
-                <div class="table-responsive">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:var(--bg-color);">
-                                <th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th>
-                                <th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem; width:100px;">السعر</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${compItems.map(item => `
-                                <tr>
-                                    <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
-                                    <td style="padding:8px; border-bottom:1px solid var(--border);">
-                                        <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice(${item.id}, this.value)">
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
+                    <div style="cursor:pointer; flex:1;" onclick="toggleAdminCompanyItems('${c.name}')">
+                        <h3 style="color:var(--primary); display:flex; align-items:center; gap:10px;">
+                            ${c.name} 
+                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">(${compItems.length} صنف)</span>
+                        </h3>
+                    </div>
+                    <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="startDeleteCompany('${c.name}')">🗑️ حذف</button>
                 </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    $('#main-content').innerHTML = html;
-}
-
-async function updatePrice(itemId, newPrice) {
-    if (!newPrice) return;
-    const { error } = await supabaseClient.from('items').update({ price: parseFloat(newPrice) }).eq('id', itemId);
-    if (error) { alert('خطأ في تحديث السعر'); return; }
-    alert('تم تحديث السعر بنجاح!');
-}
+                
+                <div id="admin-items-${c.name.replace(/\s/g, '')}" class="hidden">
+                    <button class="btn btn-outline" style="width:100%; margin-bottom:10px; font-size:0.8rem;" onclick="openAddItemSheetAdmin('${c.name}')">+ إضافة صنف للشركة</button>
+                    <div class="table-responsive">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead><tr style="background:var(--bg-color);"><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th><th style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;
