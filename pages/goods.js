@@ -305,7 +305,10 @@ async function openManageGoods() {
     document.body.appendChild(overlay);
 }
 
-function openAddBatchSheet() {
+// ==== إضافة بضاعة (شاشة جديدة بقوائم اختيار) ====
+async function openAddBatchSheet() {
+    const companies = await getAll('companies');
+    
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -319,12 +322,17 @@ function openAddBatchSheet() {
                 <input type="date" id="batchDate" value="${getToday()}">
             </div>
             <div class="input-group">
-                <label>اسم الشركة</label>
-                <input type="text" id="batchCompany" placeholder="اسم الشركة">
+                <label>الشركة</label>
+                <select id="batchCompany" onchange="updateBatchItems()">
+                    <option value="">اختر الشركة...</option>
+                    ${companies.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                </select>
             </div>
             <div class="input-group">
-                <label>اسم الصنف</label>
-                <input type="text" id="batchItemName" placeholder="اسم الصنف">
+                <label>الصنف</label>
+                <select id="batchItemName">
+                    <option value="">اختر الصنف...</option>
+                </select>
             </div>
             <div class="input-group">
                 <label>الكمية المضافة</label>
@@ -337,10 +345,26 @@ function openAddBatchSheet() {
     document.body.appendChild(overlay);
 }
 
+async function updateBatchItems() {
+    const company = document.getElementById('batchCompany').value;
+    const itemSelect = document.getElementById('batchItemName');
+    
+    itemSelect.innerHTML = '<option value="">اختر الصنف...</option>';
+    
+    if (!company) return;
+    
+    const items = await getAll('items');
+    const companyItems = items.filter(i => i.company === company);
+    
+    companyItems.forEach(i => {
+        itemSelect.innerHTML += `<option value="${i.name}">${i.name}</option>`;
+    });
+}
+
 async function saveNewBatch(btn) {
     const date = document.getElementById('batchDate').value;
-    const company = document.getElementById('batchCompany').value.trim();
-    const itemName = document.getElementById('batchItemName').value.trim();
+    const company = document.getElementById('batchCompany').value;
+    const itemName = document.getElementById('batchItemName').value;
     const qty = parseFloat(document.getElementById('batchQty').value);
 
     if (!date || !company || !itemName || !qty) return alert('اكمل البيانات');
@@ -355,12 +379,10 @@ async function saveNewBatch(btn) {
     if (existingItem) {
         existingItem.qty = (existingItem.qty || 0) + qty;
         await updateItem('items', existingItem);
-    } else {
-        await addItem('items', { name: itemName, company, price: 0, qty: qty });
     }
     
     btn.closest('.bottom-sheet-overlay').remove();
-    renderGoods(); // العودة لشاشة البضاعة
+    renderGoods();
 }
 
 async function deleteAdditionDate(date, btn) {
