@@ -3,7 +3,8 @@ async function renderShifts() {
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
     
-    const shifts = (await getAll('shifts')).filter(s => !s.closed && s.branch_id === state.currentBranch.id);
+    const allShifts = await getAll('shifts');
+    const shifts = allShifts.filter(s => !s.closed && s.branch_id === state.currentBranch.id);
 
     $('#main-content').innerHTML = `
         <h2 style="margin: 15px 0;">الورديات</h2>
@@ -32,15 +33,18 @@ async function renderShifts() {
             <button class="btn btn-primary" id="openShiftBtn" onclick="openShift()" disabled>فتح الوردية وبدء الفاتورة</button>
         </div>
 
-        <h3 style="margin-top:25px; margin-bottom:15px;">ورديات مفتوحة</h3>
-        ${shifts.length ? shifts.map(s => `
+        <h3 style="margin-top:25px; margin-bottom:15px;">ورديات مفتوحة (${shifts.length})</h3>
+        
+        ${shifts.length === 0 ? '<p style="text-align:center; padding:20px; color:var(--text-muted); background:#fff; border-radius:12px; border:1px solid var(--border);">لا توجد ورديات مفتوحة حالياً</p>' : ''}
+        
+        ${shifts.map(s => `
             <div class="card" onclick="resumeShift(${s.id})" style="cursor:pointer;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="color:var(--primary);">${s.type} ${s.is_matabak ? '(مطبق)' : ''} - ${s.employee}</h4>
                     <span style="font-size:0.8rem; color:var(--text-muted);">${s.date}</span>
                 </div>
             </div>
-        `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted); background:#fff; border-radius:12px; border:1px solid var(--border);">لا توجد ورديات مفتوحة حالياً</p>'}
+        `).join('')}
     `;
     
     renderBottomNav('shifts');
