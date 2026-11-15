@@ -22,7 +22,6 @@ function renderLoginScreen() {
                 <p style="color: #8e8e93; font-size: 0.9rem; margin-bottom: 30px;">نظام إدارة الفروع المتكامل</p>
                 
                 <button class="btn" style="background: #fff; color: #333; border: 1px solid #ddd; display:flex; justify-content:center; gap:10px; align-items:center; padding:14px; font-size:1rem; font-weight: 700; border-radius:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);" onclick="signInWithGoogle()">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="22">
                     الدخول بحساب جوجل
                 </button>
 
