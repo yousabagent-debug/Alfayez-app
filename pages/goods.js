@@ -6,7 +6,7 @@ async function renderGoods() {
     const companies = await getAll('companies');
     const items = await getAll('items');
     
-    // فلترة الأصناف الخاصة بالفرع (أو اللي ملهاش فرع)
+    // فلترة الأصناف الخاصة بالفرع
     const branchItems = items.filter(i => i.branch_id === state.currentBranch.id || !i.branch_id);
 
     $('#main-content').innerHTML = `
@@ -14,7 +14,7 @@ async function renderGoods() {
             <h2 style="margin:0;">البضاعة الموجودة</h2>
             <div style="display:flex; gap:8px;">
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openManageGoods()">إدارة البضاعة</button>
-                <button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="addCompanyPrompt()">+ شركة</button>
+                <button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddCompanySheet()">+ شركة</button>
             </div>
         </div>
         
@@ -90,13 +90,48 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-// ==== إضافة شركة ====
-async function addCompanyPrompt() {
-    const name = prompt('اسم الشركة الجديدة:');
-    if (name) {
-        await addItem('companies', { name });
-        renderGoods();
+// ==== إضافة شركة (شاشة منبثقة) ====
+function openAddCompanySheet() {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header">
+                <h2>شركة / مورد جديد</h2>
+                <button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            <div class="input-group">
+                <label>اسم الشركة</label>
+                <input type="text" id="newCompanyName" placeholder="مثال: التعاون">
+            </div>
+            <div class="input-group">
+                <label>رقم الهاتف (اختياري)</label>
+                <input type="text" id="newCompanyPhone" placeholder="01xxxxxxxxx">
+            </div>
+            <div class="input-group">
+                <label>ملاحظات (اختياري)</label>
+                <input type="text" id="newCompanyNotes" placeholder="أي ملاحظات إضافية">
+            </div>
+            
+            <button class="btn-save" onclick="saveNewCompany(this)">حفظ الشركة</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveNewCompany(btn) {
+    const name = document.getElementById('newCompanyName').value.trim();
+    if (!name) {
+        document.getElementById('newCompanyName').style.borderColor = 'red';
+        return;
     }
+    
+    btn.innerText = 'جاري الحفظ...';
+    btn.disabled = true;
+    
+    await addItem('companies', { name });
+    btn.closest('.bottom-sheet-overlay').remove();
+    renderGoods();
 }
 
 // ==== فتح صفحة شركة ====
@@ -117,8 +152,8 @@ async function openCompany(companyName) {
             </div>
 
             <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="addItemToCompany('${companyName}')">+ إضافة صنف</button>
-                <button class="btn btn-outline" style="flex:1; border-color:var(--danger); color:var(--danger);" onclick="editCompany('${companyName}')">تعديل الشركة</button>
+                <button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="openAddItemSheet('${companyName}')">+ إضافة صنف</button>
+                <button class="btn btn-outline" style="flex:1; border-color:var(--danger); color:var(--danger);" onclick="editCompanyName('${companyName}')">تعديل الشركة</button>
             </div>
 
             <div class="table-responsive">
@@ -148,19 +183,65 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== إضافة صنف لشركة ====
-async function addItemToCompany(companyName) {
-    const name = prompt('اسم الصنف الجديد:');
-    if (!name) return;
-    const price = parseFloat(prompt('سعر الوحدة (جنيه):'));
-    if (!price) return;
-    await addItem('items', { name, company: companyName, price, qty: 0 });
-    document.querySelector('.bottom-sheet-overlay').remove();
-    openCompany(companyName);
+// ==== إضافة صنف (شاشة منبثقة) ====
+function openAddItemSheet(companyName) {
+    // إغلاق شاشة الشركة المفتوحة
+    document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
+
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header">
+                <h2>صنف جديد</h2>
+                <button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            <div class="input-group">
+                <label>اسم الصنف</label>
+                <input type="text" id="newItemName" placeholder="مثال: زيت 1 لتر">
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1;">
+                    <label>الكمية</label>
+                    <input type="number" id="newItemQty" value="0">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>سعر الصنف</label>
+                    <input type="number" id="newItemPrice" value="0">
+                </div>
+            </div>
+            
+            <div style="background:#f4f4f4; padding:10px; border-radius:8px; font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; text-align:right;">
+                سعر الصنف يُحدّد هنا فقط، ويُطبّق تلقائياً على فواتير الورديات الجديدة.
+            </div>
+            
+            <button class="btn-save" onclick="saveNewItem('${companyName}', this)">حفظ الصنف</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveNewItem(companyName, btn) {
+    const name = document.getElementById('newItemName').value.trim();
+    const qty = parseFloat(document.getElementById('newItemQty').value) || 0;
+    const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
+    
+    if (!name) {
+        document.getElementById('newItemName').style.borderColor = 'red';
+        return;
+    }
+    
+    btn.innerText = 'جاري الحفظ...';
+    btn.disabled = true;
+    
+    await addItem('items', { name, company: companyName, price, qty });
+    btn.closest('.bottom-sheet-overlay').remove();
+    openCompany(companyName); // نرجع نفتح شاشة الشركة بعد الإضافة
 }
 
 // ==== تعديل اسم شركة ====
-async function editCompany(oldName) {
+async function editCompanyName(oldName) {
     const newName = prompt('اسم الشركة الجديد:', oldName);
     if (newName && newName !== oldName) {
         const companies = await getAll('companies');
@@ -171,12 +252,12 @@ async function editCompany(oldName) {
         for (let item of items) {
             if (item.company === oldName) { item.company = newName; await updateItem('items', item); }
         }
-        document.querySelector('.bottom-sheet-overlay').remove();
+        document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
         renderGoods();
     }
 }
 
-// ==== إدارة البضاعة (إضافة كميات) ====
+// ==== إدارة البضاعة ====
 async function openManageGoods() {
     const additions = await getAll('additions');
     const grouped = additions.reduce((acc, curr) => {
@@ -192,7 +273,7 @@ async function openManageGoods() {
                 <h2 style="color:var(--primary);">البضاعة المضافة</h2>
                 <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
             </div>
-            <button class="btn btn-primary" onclick="addNewBatch()" style="margin-bottom:20px;">+ إضافة بضاعة</button>
+            <button class="btn btn-primary" onclick="openAddBatchSheet()" style="margin-bottom:20px;">+ إضافة بضاعة</button>
 
             ${Object.keys(grouped).length === 0 ? '<p style="text-align:center; color:var(--text-muted);">لا يوجد بضاعة مضافة</p>' : ''}
 
@@ -221,15 +302,48 @@ async function openManageGoods() {
     document.body.appendChild(overlay);
 }
 
-async function addNewBatch() {
-    const date = prompt('التاريخ:', getToday());
-    if (!date) return;
-    const company = prompt('اسم الشركة:');
-    if (!company) return;
-    const itemName = prompt('اسم الصنف:');
-    if (!itemName) return;
-    const qty = parseFloat(prompt('الكمية المضافة:'));
-    if (!qty) return;
+function openAddBatchSheet() {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header">
+                <h2>إضافة بضاعة</h2>
+                <button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+            </div>
+            
+            <div class="input-group">
+                <label>التاريخ</label>
+                <input type="date" id="batchDate" value="${getToday()}">
+            </div>
+            <div class="input-group">
+                <label>اسم الشركة</label>
+                <input type="text" id="batchCompany" placeholder="اسم الشركة">
+            </div>
+            <div class="input-group">
+                <label>اسم الصنف</label>
+                <input type="text" id="batchItemName" placeholder="اسم الصنف">
+            </div>
+            <div class="input-group">
+                <label>الكمية المضافة</label>
+                <input type="number" id="batchQty" placeholder="0">
+            </div>
+            
+            <button class="btn-save" onclick="saveNewBatch(this)">حفظ الإضافة</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function saveNewBatch(btn) {
+    const date = document.getElementById('batchDate').value;
+    const company = document.getElementById('batchCompany').value.trim();
+    const itemName = document.getElementById('batchItemName').value.trim();
+    const qty = parseFloat(document.getElementById('batchQty').value);
+
+    if (!date || !company || !itemName || !qty) return alert('اكمل البيانات');
+
+    btn.innerText = 'جاري الحفظ...';
+    btn.disabled = true;
 
     await addItem('additions', { date, company, item_name: itemName, qty });
 
@@ -241,11 +355,13 @@ async function addNewBatch() {
     } else {
         await addItem('items', { name: itemName, company, price: 0, qty: qty });
     }
-    document.querySelector('.bottom-sheet-overlay').remove();
-    openManageGoods();
+    
+    btn.closest('.bottom-sheet-overlay').remove();
+    openManageGoods(); // نرجع نفتح شاشة الإدارة
 }
 
 async function deleteAdditionDate(date, btn) {
+    if (!confirm('هل أنت متأكد من حذف إضافات هذا التاريخ؟')) return;
     const additions = await getAll('additions');
     const toDelete = additions.filter(a => a.date === date);
     for (let add of toDelete) {
@@ -259,6 +375,7 @@ async function deleteAdditionDate(date, btn) {
 }
 
 async function deleteSingleAddition(id, btn) {
+    if (!confirm('حذف هذه الإضافة؟')) return;
     const add = await getById('additions', id);
     if (add) {
         const items = await getAll('items');
