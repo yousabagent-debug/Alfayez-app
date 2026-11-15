@@ -62,33 +62,11 @@ async function initSplash() {
 async function render() {
     if (state.screen === 'login') return renderLoginScreen();
     if (state.screen === 'branches') return renderBranches();
+    if (state.screen === 'dashboard') return renderDashboard();
     
     // شاشات تانية مؤقتة
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
+    renderBottomNav(state.screen);
 }
-
-// ==== ميزة السحب للتحديث (بس لو فيه نت) ====
-let touchStartY = 0;
-let touchEndY = 0;
-
-document.addEventListener('touchstart', e => {
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-    touchEndY = e.changedTouches[0].screenY;
-    
-    // لو السحب لتحت مسافة 100 بكسل، وكان في أعلى الصفحة، وكان فيه نت
-    if (touchEndY - touchStartY > 100 && window.scrollY === 0 && navigator.onLine) {
-        const toast = document.createElement('div');
-        toast.innerText = 'جاري تحديث البيانات...';
-        toast.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:10px 20px; border-radius:20px; font-size:0.9rem; z-index:9999; box-shadow:0 4px 10px rgba(0,0,0,0.2);';
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
-    }
-}, { passive: true });
 
 window.onload = () => { initSplash(); };
