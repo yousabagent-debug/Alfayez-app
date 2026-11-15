@@ -87,6 +87,5 @@ async function render() {
     renderBottomNav(state.screen);
 }
 
-window.onload = () => { initSplash(); };
-
 console.log("App Loaded");
+window.onload = () => { initSplash(); };
