@@ -60,7 +60,7 @@ async function renderReports() {
                         <span style="font-size:0.75rem; color:var(--text-muted);">${a.date}</span>
                     </div>
                     <div style="font-size:0.8rem; color:var(--text-muted);">${a.details}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">👤 ${a.user}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">👤 ${a.user_email}</div>
                 </div>
             `).join('') : '<p style="text-align:center; color:var(--text-muted);">لا يوجد تحركات مسجلة</p>'}
         </div>
