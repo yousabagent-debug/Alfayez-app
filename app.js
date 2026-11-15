@@ -12,6 +12,20 @@ const createEl = (tag, className, innerHTML) => {
 const formatMoney = (num) => new Intl.NumberFormat('en-US').format(num || 0);
 const getToday = () => new Date().toISOString().split('T')[0];
 
+// ==== تسجيل الحركات ====
+async function logActivity(action, details) {
+    try {
+        await addItem('activities', {
+            action: action,
+            details: details,
+            user: state.userProfile ? state.userProfile.email : 'غير معروف',
+            branch_name: state.currentBranch ? state.currentBranch.name : 'غير معروف',
+            date: new Date().toLocaleString('ar-EG'),
+            timestamp: Date.now()
+        });
+    } catch(e) { console.log(e); }
+}
+
 // ==== التنقل ====
 function navigate(screen) { 
     state.screen = screen; 
@@ -67,6 +81,7 @@ async function render() {
     if (state.screen === 'invoice') return renderInvoice();
     if (state.screen === 'supplies') return renderSupplies();
     if (state.screen === 'expenses') return renderExpenses();
+    if (state.screen === 'reports') return renderReports();
     
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
     renderBottomNav(state.screen);
