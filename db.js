@@ -29,14 +29,21 @@ async function getById(table, id) {
 async function addItem(table, item) {
     if (!supabaseClient) return null;
     const { data, error } = await supabaseClient.from(table).insert([item]).select();
-    if (error) { console.error(error); return null; }
+    if (error) { 
+        console.error(error); 
+        alert('خطأ في قاعدة البيانات: ' + error.message); 
+        return null; 
+    }
     return data[0];
 }
 
 async function updateItem(table, item) {
     if (!supabaseClient) return;
     const { error } = await supabaseClient.from(table).update(item).eq('id', item.id);
-    if (error) console.error(error);
+    if (error) {
+        console.error(error);
+        alert('خطأ في التحديث: ' + error.message);
+    }
 }
 
 async function deleteItem(table, id) {
