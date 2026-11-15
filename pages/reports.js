@@ -19,7 +19,7 @@ async function renderReports() {
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="font-size:1.1rem;">📧 إيميلات التقارير</h3>
-                <button class="icon-btn" onclick="addReportEmail()" style="background:var(--primary); color:#fff;">+</button>
+                <button class="icon-btn" onclick="openAddEmailModal()" style="background:var(--primary); color:#fff;">+</button>
             </div>
             <div id="emailsList">
                 ${reportEmails.length ? reportEmails.map(e => `
@@ -69,14 +69,35 @@ async function renderReports() {
     renderBottomNav('reports');
 }
 
-async function addReportEmail() {
-    const email = prompt('أدخل البريد الإلكتروني:');
-    if (!email || !email.includes('@')) return alert('بريد غير صالح');
+// ==== شاشة إضافة إيميل (بتصميم التطبيق) ====
+function openAddEmailModal() {
+    const overlay = createEl('div', 'bottom-sheet-overlay');
+    overlay.innerHTML = `
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header"><h2>إضافة إيميل جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="newReportEmail" placeholder="example@email.com">
+            </div>
+            <button class="btn-save" onclick="saveNewReportEmail(this)">حفظ الإيميل</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('newReportEmail').focus(), 100);
+}
+
+async function saveNewReportEmail(btn) {
+    const email = document.getElementById('newReportEmail').value.trim();
+    if (!email || !email.includes('@')) {
+        document.getElementById('newReportEmail').style.borderColor = 'red';
+        return;
+    }
     
-    // تأكيد إن الكود وصل هنا
-    alert('جاري محاولة إضافة الإيميل: ' + email);
+    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
     
     await addItem('report_emails', { email, branch_id: state.currentBranch.id });
+    
+    btn.closest('.bottom-sheet-overlay').remove();
     renderReports();
 }
 
