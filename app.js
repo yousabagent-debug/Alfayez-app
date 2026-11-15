@@ -18,7 +18,7 @@ async function logActivity(action, details) {
         await addItem('activities', {
             action: action,
             details: details,
-            user: state.userProfile ? state.userProfile.email : 'غير معروف',
+            user_email: state.userProfile ? state.userProfile.email : 'غير معروف',
             branch_name: state.currentBranch ? state.currentBranch.name : 'غير معروف',
             date: new Date().toLocaleString('ar-EG'),
             timestamp: Date.now()
