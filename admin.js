@@ -77,10 +77,7 @@ async function deleteUserProfile(userId) {
     renderAdminPanel();
 }
 
-// ==========================================
 // ==== إدارة الأسعار والشركات (للمدير فقط) ====
-// ==========================================
-
 async function renderPriceManager() {
     const companies = await getAll('companies');
     const items = await getAll('items');
@@ -153,7 +150,6 @@ async function updatePrice(itemId, newPrice) {
     alert('تم تحديث السعر بنجاح!');
 }
 
-// ==== إضافة شركة من شاشة الإدارة ====
 function openAddCompanySheetAdmin() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -175,7 +171,6 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
-// ==== إضافة صنف من شاشة الإدارة ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -203,7 +198,6 @@ async function saveNewItemAdmin(companyName, btn) {
     renderPriceManager();
 }
 
-// ==== حذف الشركة (3 ضغطات) ====
 async function startDeleteCompany(companyName) {
     const confirm1 = confirm(`هل تريد حذف شركة "${companyName}"؟`);
     if (!confirm1) return;
@@ -223,7 +217,6 @@ async function startDeleteCompany(companyName) {
     renderPriceManager();
 }
 
-// ==== حذف الصنف (3 ضغطات) ====
 async function startDeleteItem(itemId) {
     const confirm1 = confirm('هل تريد حذف هذا الصنف؟');
     if (!confirm1) return;
