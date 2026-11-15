@@ -29,15 +29,19 @@ async function renderSupplies() {
 
         ${closedShifts.length === 0 ? `
             <p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد توريدات محفوظة حتى الآن</p>
-        ` : closedShifts.map(s => `
-            <div class="card" onclick="viewSupplyDetails(${s.id})" style="cursor:pointer;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <h4 style="color:var(--primary);">${s.type} ${s.is_matabak ? '(مطبق)' : ''} - ${s.employee}</h4>
-                    <span style="font-weight:800;">${formatMoney(s.total)}</span>
+        ` : closedShifts.map(s => {
+            // هنا بنقرا الأصناف من المكان الجديد (invoice_data) أو القديم
+            const itemsCount = (s.invoice_data || s.invoice_items || []).length;
+            return `
+                <div class="card" onclick="viewSupplyDetails(${s.id})" style="cursor:pointer;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <h4 style="color:var(--primary);">${s.type} ${s.is_matabak ? '(مطبق)' : ''} - ${s.employee}</h4>
+                        <span style="font-weight:800;">${formatMoney(s.total)}</span>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:0.8rem;">${s.date} · ${itemsCount} صنف</p>
                 </div>
-                <p style="color:var(--text-muted); font-size:0.8rem;">${s.date} · ${(s.invoice_items || []).length} صنف</p>
-            </div>
-        `).join('')}
+            `;
+        }).join('')}
     `;
     
     renderBottomNav('supplies');
@@ -46,9 +50,10 @@ async function renderSupplies() {
 // ==== عرض تفاصيل التوريد ====
 async function viewSupplyDetails(id) {
     const s = await getById('shifts', id);
-    const items = s.invoice_items || [];
+    // هنا بنقرا الأصناف من المكان الجديد
+    const items = s.invoice_data || s.invoice_items || [];
     
-    // جلب المصروفات المرتبطة بنفس الوردية (نفس التاريخ، النوع، والموظف)
+    // جلب المصروفات المرتبطة بنفس الوردية
     const allExpenses = await getAll('expenses');
     const relatedExpenses = allExpenses.filter(e => 
         e.branch_id === s.branch_id && 
@@ -130,7 +135,7 @@ async function deleteSupply(id, btn) {
     if (!confirm('هل أنت متأكد من حذف هذه الوردية؟ سيتم إرجاع الكميات للرصيد.')) return;
     
     const s = await getById('shifts', id);
-    const items = s.invoice_items || [];
+    const items = s.invoice_data || s.invoice_items || [];
     
     for (let invItem of items) {
         if (invItem.id) {
