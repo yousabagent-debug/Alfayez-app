@@ -5,7 +5,6 @@ async function renderGoods() {
     
     const companies = await getAll('companies');
     const items = await getAll('items');
-
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
 
     $('#main-content').innerHTML = `
@@ -65,7 +64,6 @@ async function renderGoods() {
     renderBottomNav('goods');
 }
 
-// ==== البحث عن صنف ====
 async function searchItems(query) {
     const resDiv = $('#searchResults');
     if (!query.trim()) { resDiv.classList.add('hidden'); return; }
@@ -83,11 +81,9 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-// ==== إضافة شركة (للمدير بس) ====
 function openAddCompanySheet() {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
-
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -108,12 +104,10 @@ async function saveNewCompany(btn) {
     renderGoods();
 }
 
-// ==== فتح صفحة شركة ====
 async function openCompany(companyName) {
     const items = await getAll('items');
     const companyItems = items.filter(i => i.company === companyName);
     const totalValue = companyItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
-    
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
@@ -146,15 +140,11 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== طلب تعديل صنف (لو موظف بيطلب باسورد، لو مدير بيدخل علطول) ====
 async function requestEditItem(itemId, companyName) {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (isAdmin) {
         openEditItemSheet(itemId, companyName, true);
     } else {
-        // الموظف لازم يدخل باسورد تعديل الكمية
-        const requiredPass = localStorage.getItem('qtyEditPass') || '1234';
-        
         const overlay = createEl('div', 'bottom-sheet-overlay');
         overlay.innerHTML = `
             <div class="bottom-sheet">
@@ -171,22 +161,15 @@ async function requestEditItem(itemId, companyName) {
 async function checkQtyPassForEdit(itemId, companyName) {
     const requiredPass = localStorage.getItem('qtyEditPass') || '1234';
     const entered = document.getElementById('qtyPassInputUser').value;
-    
-    if (entered !== requiredPass) {
-        document.getElementById('qtyPassInputUser').style.borderColor = 'red';
-        return;
-    }
-    
+    if (entered !== requiredPass) { document.getElementById('qtyPassInputUser').style.borderColor = 'red'; return; }
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
     openEditItemSheet(itemId, companyName, false);
 }
 
-// ==== تعديل صنف (بيظهر للمدير كامل، وللموظف الكمية بس) ====
 async function openEditItemSheet(itemId, companyName, isAdmin) {
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
     const item = await getById('items', itemId);
     if (!item) return;
-
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -212,21 +195,20 @@ async function saveEditItem(itemId, companyName, isAdmin, btn) {
     
     if (isAdmin) {
         await updateItem('items', { id: itemId, name, company: companyName, qty, price });
+        await logActivity('تعديل صنف', `تم تعديل الصنف ${name} (الكمية: ${qty}, السعر: ${price})`);
     } else {
-        // الموظف بيعدل الكمية بس
         const item = await getById('items', itemId);
         await updateItem('items', { ...item, qty });
+        await logActivity('تعديل كمية', `قام الموظف بتعديل كمية الصنف ${item.name} إلى ${qty}`);
     }
     
     btn.closest('.bottom-sheet-overlay').remove();
     openCompany(companyName);
 }
 
-// ==== إضافة صنف (للمدير بس) ====
 function openAddItemSheet(companyName) {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
-
     document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -244,17 +226,19 @@ function openAddItemSheet(companyName) {
 }
 
 async function saveNewItem(companyName, btn) {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
     const name = document.getElementById('newItemName').value.trim();
     const qty = parseFloat(document.getElementById('newItemQty').value) || 0;
     const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
     if (!name) { document.getElementById('newItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
     await addItem('items', { name, company: companyName, price, qty });
+    await logActivity('إضافة صنف جديد', `تمت إضافة صنف ${name} لشركة ${companyName}`);
     btn.closest('.bottom-sheet-overlay').remove();
     openCompany(companyName);
 }
 
-// ==== إدارة البضاعة (إضافة بضاعة) ====
 async function openManageGoods() {
     const additions = await getAll('additions');
     const grouped = additions.reduce((acc, curr) => { if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); return acc; }, {});
@@ -282,7 +266,6 @@ async function openManageGoods() {
     document.body.appendChild(overlay);
 }
 
-// ==== إضافة بضاعة (متعددة الشركات والأصناف) ====
 let batchItemsArray = [];
 async function openAddBatchSheet() {
     batchItemsArray = [];
@@ -347,6 +330,7 @@ async function saveAllBatchItems(btn) {
         await addItem('additions', { date, company: batchItem.company, item_name: batchItem.item_name, qty: batchItem.qty });
         const existingItem = items.find(i => i.name === batchItem.item_name && i.company === batchItem.company);
         if (existingItem) { existingItem.qty = (existingItem.qty || 0) + batchItem.qty; await updateItem('items', existingItem); }
+        await logActivity('إضافة بضاعة', `تمت إضافة ${batchItem.qty} من ${batchItem.item_name} (${batchItem.company})`);
     }
     btn.closest('.bottom-sheet-overlay').remove();
     renderGoods();
