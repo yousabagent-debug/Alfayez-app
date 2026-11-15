@@ -1,5 +1,5 @@
 // ==== حالة التطبيق ====
-let state = { currentBranch: null, screen: 'login', userProfile: null };
+let state = { currentBranch: null, screen: 'login', userProfile: null, activeShift: null, tempShiftType: 'نهارية' };
 
 // ==== أدوات مساعدة ====
 const $ = (sel) => document.querySelector(sel);
@@ -33,7 +33,6 @@ async function initSplash() {
                     navigate('login');
                 } else {
                     let profile = await getUserProfile(user.id);
-                    
                     if (!profile) {
                         try {
                             await supabaseClient.from('profiles').insert([{ id: user.id, email: user.email, status: 'pending' }]);
@@ -64,8 +63,9 @@ async function render() {
     if (state.screen === 'branches') return renderBranches();
     if (state.screen === 'dashboard') return renderDashboard();
     if (state.screen === 'goods') return renderGoods();
+    if (state.screen === 'shifts') return renderShifts();
+    if (state.screen === 'invoice') return renderInvoice();
     
-    // شاشات تانية مؤقتة
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
     renderBottomNav(state.screen);
 }
