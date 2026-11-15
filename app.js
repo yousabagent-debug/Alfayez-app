@@ -88,3 +88,5 @@ async function render() {
 }
 
 window.onload = () => { initSplash(); };
+
+console.log("App Loaded");
