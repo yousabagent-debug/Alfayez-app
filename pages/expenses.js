@@ -10,11 +10,32 @@ async function renderExpenses() {
         <h2 style="margin: 15px 0;">المصروفات</h2>
         <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">سجّل مصروفات المحل يدوياً أو باختيار صنف من البضاعة</p>
 
+        <!-- التبويبات (زرارين جنب بعض) -->
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <button class="btn btn-outline" id="btn-exp-manual" style="flex:1; border-radius:12px;" onclick="switchExpenseTab('manual')">✍️ يدوي</button>
+            <button class="btn btn-outline" id="btn-exp-goods" style="flex:1; border-radius:12px;" onclick="switchExpenseTab('goods')">📦 من البضاعة</button>
+        </div>
+
         <div class="card">
-            <!-- التبويبات -->
-            <div class="tabs" style="margin-bottom:20px;">
-                <div class="tab active" onclick="switchExpenseTab('manual', this)" style="background:#fff; box-shadow:0 2px 5px rgba(0,0,0,0.05);">يدوي</div>
-                <div class="tab" onclick="switchExpenseTab('goods', this)">من البضاعة</div>
+            <!-- بيانات الوردية (مشتركة) -->
+            <div style="background:var(--bg-color); padding:12px; border-radius:10px; margin-bottom:15px;">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div class="input-group" style="flex:1; margin-bottom:0;">
+                        <label>نوع الوردية</label>
+                        <select id="expShiftType">
+                            <option value="نهارية">نهارية</option>
+                            <option value="ليلية">ليلية</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="flex:1; margin-bottom:0;">
+                        <label>التاريخ</label>
+                        <input type="date" id="expDate" value="${getToday()}">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label>اسم الموظف</label>
+                    <input type="text" id="expEmployee" placeholder="اسم الموظف" value="${state.userProfile ? state.userProfile.email.split('@')[0] : ''}">
+                </div>
             </div>
 
             <!-- تبويب المصروف اليدوي -->
@@ -75,15 +96,18 @@ async function renderExpenses() {
         <h3 style="margin-top:25px; margin-bottom:15px;">سجل المصروفات</h3>
         
         ${expenses.length ? expenses.map(e => `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:15px;">
-                <div>
-                    <h4 style="font-size:0.95rem; margin-bottom:5px;">${e.title}</h4>
-                    <p style="color:var(--text-muted); font-size:0.8rem;">${e.date} ${e.notes ? '· ' + e.notes : ''}</p>
+            <div class="card" style="padding:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                    <div>
+                        <h4 style="font-size:0.95rem; margin-bottom:3px;">${e.title}</h4>
+                        <p style="color:var(--text-muted); font-size:0.8rem;">
+                            ${e.date} · ${e.shift_type || 'غير محدد'} · ${e.employee || 'غير محدد'}
+                        </p>
+                        ${e.notes ? `<p style="color:var(--text-muted); font-size:0.8rem;">📝 ${e.notes}</p>` : ''}
+                    </div>
+                    <div style="font-weight:800; color:var(--danger);">${formatMoney(e.total)} ج</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <div style="font-weight:800;">${formatMoney(e.total)} ج</div>
-                    <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="deleteExpense(${e.id}, this)">🗑️</button>
-                </div>
+                <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="deleteExpense(${e.id})">🗑️ حذف</button>
             </div>
         `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد مصروفات مسجلة</p>'}
 
@@ -95,36 +119,48 @@ async function renderExpenses() {
     
     renderBottomNav('expenses');
     loadExpenseCompanies();
+    switchExpenseTab('manual'); // افتراضي
 }
 
-// ==== التبويبات ====
-function switchExpenseTab(tabId, btn) {
-    document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active')); 
-    btn.classList.add('active');
-    if(tabId === 'manual') { 
+// ==== التبويبات (زرارين جنب بعض) ====
+function switchExpenseTab(tabId) {
+    const btnManual = document.getElementById('btn-exp-manual');
+    const btnGoods = document.getElementById('btn-exp-goods');
+    
+    btnManual.classList.remove('btn-primary');
+    btnGoods.classList.remove('btn-primary');
+    btnManual.classList.add('btn-outline');
+    btnGoods.classList.add('btn-outline');
+    
+    if (tabId === 'manual') {
+        btnManual.classList.remove('btn-outline');
+        btnManual.classList.add('btn-primary');
         $('#tab-manual-expense').classList.remove('hidden'); 
         $('#tab-goods-expense').classList.add('hidden'); 
-    } else { 
+    } else {
+        btnGoods.classList.remove('btn-outline');
+        btnGoods.classList.add('btn-primary');
         $('#tab-manual-expense').classList.add('hidden'); 
         $('#tab-goods-expense').classList.remove('hidden'); 
     }
 }
 
-// ==== تحديث الإجمالي في المصروف اليدوي ====
 function updateExpenseTotal() {
     const qty = parseFloat(document.getElementById('expenseQty').value) || 0;
     const price = parseFloat(document.getElementById('expensePrice').value) || 0;
     document.getElementById('expenseTotal').innerText = formatMoney(qty * price) + ' ج';
 }
 
-// ==== حفظ المصروف اليدوي ====
 async function saveManualExpense(btn) {
     const title = document.getElementById('expenseTitle').value.trim();
     const qty = parseFloat(document.getElementById('expenseQty').value) || 1;
     const price = parseFloat(document.getElementById('expensePrice').value) || 0;
     const notes = document.getElementById('expenseNotes').value.trim();
+    const shiftType = document.getElementById('expShiftType').value;
+    const date = document.getElementById('expDate').value;
+    const employee = document.getElementById('expEmployee').value.trim();
     
-    if (!title || !price) return alert('ادخل بيان المصروف والسعر');
+    if (!title || !price || !date || !employee) return alert('ادخل كل البيانات المطلوبة');
 
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
@@ -133,14 +169,14 @@ async function saveManualExpense(btn) {
         total: qty * price,
         type: 'manual',
         branch_id: state.currentBranch.id,
-        date: getToday()
+        date: date,
+        shift_type: shiftType,
+        employee: employee
     });
 
-    btn.closest('.bottom-sheet-overlay') || renderExpenses();
-    renderExpenses(); // تحديث الشاشة
+    renderExpenses();
 }
 
-// ==== تحميل شركات المصروفات ====
 async function loadExpenseCompanies() {
     const companies = await getAll('companies');
     const select = document.getElementById('expenseCompany');
@@ -149,7 +185,6 @@ async function loadExpenseCompanies() {
     updateExpenseItems();
 }
 
-// ==== تحديث أصناف المصروفات ====
 async function updateExpenseItems() {
     const comp = document.getElementById('expenseCompany').value;
     const items = await getAll('items');
@@ -166,20 +201,21 @@ async function updateExpenseFromItem() {
     }
 }
 
-// ==== حفظ مصروف من البضاعة ====
 async function saveGoodsExpense(btn) {
     const itemId = document.getElementById('expenseItem').value;
     const qty = parseFloat(document.getElementById('expenseGoodsQty').value) || 1;
     const notes = document.getElementById('expenseGoodsNotes').value.trim();
+    const shiftType = document.getElementById('expShiftType').value;
+    const date = document.getElementById('expDate').value;
+    const employee = document.getElementById('expEmployee').value.trim();
     
-    if (!itemId || !qty) return alert('اختر الصنف والكمية');
+    if (!itemId || !qty || !date || !employee) return alert('اختر الصنف والكمية والبيانات');
 
     const item = await getById('items', parseInt(itemId));
     if (!item) return;
 
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    // 1. تسجيل المصروف
     await addItem('expenses', {
         title: item.name,
         qty, price: item.price,
@@ -187,24 +223,23 @@ async function saveGoodsExpense(btn) {
         total: qty * item.price,
         type: 'goods',
         branch_id: state.currentBranch.id,
-        date: getToday()
+        date: date,
+        shift_type: shiftType,
+        employee: employee
     });
 
-    // 2. خصم من رصيد البضاعة
     item.qty = (item.qty || 0) - qty;
     await updateItem('items', item);
 
     renderExpenses();
 }
 
-// ==== حذف مصروف ====
-async function deleteExpense(id, btn) {
+async function deleteExpense(id) {
     if (!confirm('هل أنت متأكد من حذف هذا المصروف؟')) return;
     
     const expense = await getById('expenses', id);
     if (!expense) return;
 
-    // لو مصروف بضاعة، نرجع الكمية للرصيد
     if (expense.type === 'goods') {
         const items = await getAll('items');
         const item = items.find(i => i.name === expense.title);
