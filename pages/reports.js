@@ -51,6 +51,8 @@ async function renderReports() {
             </div>
         </div>
 
+        <!-- سجل التحركات يظهر للمدير بس -->
+        ${isAdmin ? `
         <div class="card">
             <h3 style="font-size:1.1rem; margin-bottom:15px;">📋 سجل التحركات</h3>
             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">كل حركة يقوم بها المستخدمون مسجلة هنا</p>
@@ -66,6 +68,7 @@ async function renderReports() {
                 </div>
             `).join('') : '<p style="text-align:center; color:var(--text-muted);">لا يوجد تحركات مسجلة</p>'}
         </div>
+        ` : ''}
     `;
     
     renderBottomNav('reports');
