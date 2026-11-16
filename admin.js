@@ -80,8 +80,19 @@ async function deleteUserProfile(userId) {
 // ==== إدارة الأسعار والشركات (للمدير فقط) ====
 async function renderPriceManager() {
     const companies = await getAll('companies');
-    const items = await getAll('items');
+    const allItems = await getAll('items');
     
+    // إزالة التكرار: بناخد كل صنف مرة واحدة بس (حتى لو ليه نسخة في كل فرع)
+    const uniqueItems = [];
+    const seen = new Set();
+    allItems.forEach(item => {
+        const key = `${item.name}-${item.company}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueItems.push(item);
+        }
+    });
+
     let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
             <h2>إدارة الأسعار والشركات</h2>
@@ -95,7 +106,7 @@ async function renderPriceManager() {
     `;
 
     companies.forEach(c => {
-        const compItems = items.filter(i => i.company === c.name);
+        const compItems = uniqueItems.filter(i => i.company === c.name);
         html += `
             <div class="card" style="padding:15px; margin-bottom:15px; border:1px solid var(--border);">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
@@ -118,10 +129,10 @@ async function renderPriceManager() {
                                     <tr>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border);">
-                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice(${item.id}, this.value)">
+                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice('${item.name}', '${item.company}', this.value)">
                                         </td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); text-align:center;">
-                                            <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="startDeleteItem(${item.id})">🗑️</button>
+                                            <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="startDeleteItem('${item.name}', '${item.company}')">🗑️</button>
                                         </td>
                                     </tr>
                                 `).join('') : '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد أصناف.</td></tr>'}
@@ -143,16 +154,12 @@ function toggleAdminCompanyItems(companyName) {
     if (el) el.classList.toggle('hidden');
 }
 
-async function updatePrice(itemId, newPrice) {
+async function updatePrice(itemName, companyName, newPrice) {
     if (!newPrice) return;
-    // بنحدث سعر الصنف في كل الفروع
     const items = await getAll('items');
-    const itemToUpdate = items.find(i => i.id === itemId);
-    if (!itemToUpdate) return;
-
-    // تحديث كل الأصناف اللي ليها نفس الاسم والشركة
+    // بنحدث سعر الصنف في كل الفروع
     for (let item of items) {
-        if (item.name === itemToUpdate.name && item.company === itemToUpdate.company) {
+        if (item.name === itemName && item.company === companyName) {
             item.price = parseFloat(newPrice);
             await updateItem('items', item);
         }
@@ -189,9 +196,7 @@ function openAddItemSheetAdmin(companyName) {
         <div class="bottom-sheet">
             <div class="bottom-sheet-header"><h2>صنف جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
             <div class="input-group"><label>اسم الصنف</label><input type="text" id="adminNewItemName" placeholder="مثال: زيت 1 لتر"></div>
-            <div style="display:flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>السعر</label><input type="number" id="adminNewItemPrice" value="0"></div>
-            </div>
+            <div class="input-group"><label>السعر</label><input type="number" id="adminNewItemPrice" value="0"></div>
             <button class="btn-save" onclick="saveNewItemAdmin('${companyName}', this)">حفظ الصنف</button>
         </div>
     `;
@@ -242,7 +247,7 @@ async function startDeleteCompany(companyName) {
     renderPriceManager();
 }
 
-async function startDeleteItem(itemId) {
+async function startDeleteItem(itemName, companyName) {
     const confirm1 = confirm('هل تريد حذف هذا الصنف؟');
     if (!confirm1) return;
     const confirm2 = confirm('تأكيد ثاني: سيتم حذف الصنف نهائياً!');
@@ -250,16 +255,12 @@ async function startDeleteItem(itemId) {
     const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟');
     if (!confirm3) return;
 
-    const item = await getById('items', itemId);
-    if (!item) return;
-
-    // حذف الصنف من كل الفروع
     const items = await getAll('items');
     for (let i of items) {
-        if (i.name === item.name && i.company === item.company) {
+        if (i.name === itemName && i.company === companyName) {
             await deleteItem('items', i.id);
         }
     }
     alert('تم حذف الصنف من كل الفروع');
     renderPriceManager();
-}
+        }
