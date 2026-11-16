@@ -63,8 +63,17 @@ async function initSplash() {
                     } else if (!profile || profile.status === 'pending') {
                         navigate('pending');
                     } else if (profile.status === 'approved') {
-                        state.userProfile = profile;
-                        navigate('branches');
+                        // الموظف المقبول: ندخله على فرعه مباشرة
+                        const branches = await getAll('branches');
+                        const branch = branches.find(b => b.id === profile.branch_id);
+                        if (branch) {
+                            state.userProfile = profile;
+                            state.currentBranch = branch;
+                            navigate('dashboard');
+                        } else {
+                            // لو الفرع مش موجود (نادراً)، نرجعه لشاشة الانتظار
+                            navigate('pending');
+                        }
                     }
                 }
             }, 500);
@@ -84,9 +93,29 @@ async function render() {
     if (state.screen === 'expenses') return renderExpenses();
     if (state.screen === 'reports') return renderReports();
     if (state.screen === 'employee-settings') return renderEmployeeSettings();
+    if (state.screen === 'pending') return renderPendingScreen();
     
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
     renderBottomNav(state.screen);
+}
+
+// ==== شاشة انتظار الموافقة ====
+async function renderPendingScreen() {
+    $('#main-header').style.display = 'flex';
+    $('#bottom-nav').classList.add('hidden');
+    
+    const user = await getCurrentUser();
+    
+    $('#main-content').innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:80vh; text-align:center; padding:20px;">
+            <div style="font-size:4rem; margin-bottom:20px;">⏳</div>
+            <h2 style="color:var(--primary); margin-bottom:10px;">حسابك قيد المراجعة</h2>
+            <p style="color:var(--text-muted); margin-bottom:5px;">البريد الإلكتروني:</p>
+            <p style="font-weight:bold; margin-bottom:20px;">${user ? user.email : ''}</p>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:30px;">يرجى الانتظار حتى يقوم المدير بالموافقة عليك وتحديد الفرع الخاص بك.</p>
+            <button class="btn btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 تسجيل الخروج</button>
+        </div>
+    `;
 }
 
 window.onload = () => { initSplash(); };
