@@ -5,19 +5,28 @@ async function renderGoods() {
     
     const companies = await getAll('companies');
     const items = await getAll('items');
+    const additions = await getAll('additions');
     
-    // فلترة الأصناف الخاصة بالفرع الحالي بس
+    // فلترة الأصناف والإضافات الخاصة بالفرع الحالي
     const branchItems = items.filter(i => i.branch_id === state.currentBranch.id);
+    const branchAdditions = additions.filter(a => a.branch_id === state.currentBranch.id);
+
+    // تجميع الإضافات حسب التاريخ
+    const groupedAdditions = branchAdditions.reduce((acc, curr) => {
+        if (!acc[curr.date]) acc[curr.date] = [];
+        acc[curr.date].push(curr);
+        return acc;
+    }, {});
 
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
             <h2 style="margin:0;">البضاعة الموجودة</h2>
             <div style="display:flex; gap:8px; flex-wrap: wrap;">
-                <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openManageGoods()">إدارة البضاعة</button>
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddBatchSheet()">+ إضافة بضاعة</button>
             </div>
         </div>
         
+        <!-- كارت الإجمالي -->
         <div class="card card-primary">
             <div class="bg-pattern"></div>
             <div style="position:relative; z-index:1;">
@@ -30,12 +39,43 @@ async function renderGoods() {
             </div>
         </div>
 
+        <!-- البحث -->
         <div class="card">
             <h3 style="margin-bottom:10px; font-size:1.1rem;">البحث عن صنف</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">اكتب اسم الصنف لمتابعة بيعه في الفواتير، وتفاصيله في البضاعة المضافة والمصروفات.</p>
             <input type="text" placeholder="اسم الصنف أو الشركة..." onkeyup="searchItems(this.value)" style="margin-bottom:0; background:var(--bg-color);">
         </div>
 
         <div id="searchResults" class="hidden" style="margin-top: 15px;"></div>
+
+        <!-- البضاعة المضافة (اللي بتظهر بالتاريخ) -->
+        <div class="card" style="padding: 15px;">
+            <h3 style="font-size:1.1rem; margin-bottom:15px;">البضاعة المضافة</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">أضف كميات جديدة على رصيد البضاعة الموجودة</p>
+            
+            ${Object.keys(groupedAdditions).length === 0 ? '<p style="text-align:center; color:var(--text-muted);">لا يوجد بضاعة مضافة</p>' : ''}
+            
+            ${Object.keys(groupedAdditions).sort((a,b) => new Date(b) - new Date(a)).map(date => `
+                <div style="border:1px solid var(--border); border-radius:12px; padding:15px; margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
+                        <h4 style="color:var(--primary); font-size:0.95rem;">${date}</h4>
+                        <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0; font-size:0.7rem; color:var(--danger);" onclick="deleteAdditionDate('${date}', this)">🗑️ حذف التاريخ</button>
+                    </div>
+                    ${groupedAdditions[date].map(add => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
+                            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                                <span style="color:var(--success); font-weight:700; font-size:0.85rem; min-width:35px;">+${add.qty}</span>
+                                <div>
+                                    <div style="font-weight:700; font-size:0.85rem;">${add.item_name}</div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted);">${add.company}</div>
+                                </div>
+                            </div>
+                            <button class="icon-btn" style="width:25px; height:25px; font-size:0.8rem;" onclick="deleteSingleAddition(${add.id}, this)">🗑️</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('')}
+        </div>
 
         <h3 style="margin-top:25px; margin-bottom:15px;">الشركات</h3>
         <div id="companiesList">
@@ -114,36 +154,6 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-async function openManageGoods() {
-    const additions = await getAll('additions');
-    // فلترة الإضافات الخاصة بالفرع
-    const branchAdditions = additions.filter(a => a.branch_id === state.currentBranch.id);
-    const grouped = branchAdditions.reduce((acc, curr) => { if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); return acc; }, {});
-    
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet" style="max-height: 90vh; overflow-y: auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;"><h2 style="color:var(--primary);">البضاعة المضافة</h2><button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            ${Object.keys(grouped).length === 0 ? '<p style="text-align:center; color:var(--text-muted);">لا يوجد بضاعة مضافة</p>' : ''}
-            ${Object.keys(grouped).sort((a,b) => new Date(b) - new Date(a)).map(date => `
-                <div class="card" style="padding:15px; margin-bottom:15px; border:1px solid var(--border);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
-                        <h4 style="color:var(--primary);">${date}</h4>
-                        <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0; font-size:0.75rem; color:var(--danger);" onclick="deleteAdditionDate('${date}', this)">🗑️ حذف</button>
-                    </div>
-                    ${grouped[date].map(add => `
-                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--border);">
-                            <div><div style="font-weight:700; font-size:0.9rem;">${add.item_name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${add.company}</div></div>
-                            <div style="display:flex; align-items:center; gap:10px;"><span style="color:var(--success); font-weight:700;">+${add.qty}</span><button class="icon-btn" style="width:25px; height:25px; font-size:0.8rem;" onclick="deleteSingleAddition(${add.id}, this)">🗑️</button></div>
-                        </div>
-                    `).join('')}
-                </div>
-            `).join('')}
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
 // ==== إضافة بضاعة (متعددة الشركات والأصناف) ====
 let batchItemsArray = [];
 async function openAddBatchSheet() {
@@ -208,7 +218,6 @@ async function saveAllBatchItems(btn) {
     const items = await getAll('items');
     
     for (let batchItem of batchItemsArray) {
-        // 1. حفظ الإضافة في جدول الإضافات
         await addItem('additions', { 
             date, 
             company: batchItem.company, 
@@ -217,7 +226,6 @@ async function saveAllBatchItems(btn) {
             branch_id: state.currentBranch.id 
         });
         
-        // 2. البحث عن الصنف في نفس الفرع
         const existingItem = items.find(i => 
             i.name === batchItem.item_name && 
             i.company === batchItem.company &&
@@ -244,22 +252,25 @@ async function saveAllBatchItems(btn) {
 
 async function deleteAdditionDate(date, btn) {
     if (!confirm('هل أنت متأكد من حذف إضافات هذا التاريخ؟')) return;
-    const additions = await getAll('additions'); const toDelete = additions.filter(a => a.date === date);
+    const additions = await getAll('additions'); 
+    const toDelete = additions.filter(a => a.date === date && a.branch_id === state.currentBranch.id);
     for (let add of toDelete) {
-        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
+        const items = await getAll('items'); 
+        const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', add.id);
     }
-    btn.closest('.bottom-sheet-overlay').remove(); openManageGoods();
+    renderGoods();
 }
 
 async function deleteSingleAddition(id, btn) {
     if (!confirm('حذف هذه الإضافة؟')) return;
     const add = await getById('additions', id);
     if (add) {
-        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
+        const items = await getAll('items'); 
+        const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', id);
     }
-    btn.closest('.bottom-sheet-overlay').remove(); openManageGoods();
+    renderGoods();
 }
