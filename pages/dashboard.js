@@ -1,4 +1,4 @@
-// ==== شاشة النظرة (الرئيسية للفرع) ====
+// ==== شاشة النظرة ====
 async function renderDashboard() {
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
@@ -18,7 +18,7 @@ async function renderDashboard() {
     $('#main-content').innerHTML = `
         <div style="padding-bottom:20px; padding-top:10px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <h3 style="font-size:1.2rem;">أهلاً بك مجدداً</h3>
+                <h3 style="font-size:1.2rem;">${t('welcome')}</h3>
                 <h2 style="color:var(--primary); font-size:1.5rem;">${state.currentBranch.name}</h2>
             </div>
             <div style="background:#fff; padding:8px 12px; border-radius:10px; border:1px solid var(--border); font-size:0.85rem;">
@@ -29,39 +29,39 @@ async function renderDashboard() {
         <div class="card card-primary">
             <div class="bg-pattern"></div>
             <div style="position:relative; z-index:1;">
-                <div style="font-size:0.95rem; opacity:0.8;">إجمالي مبلغ البضاعة الموجودة</div>
-                <h2>${formatMoney(totalValue)} <span style="font-size:1.2rem; opacity:0.8;">جنيه</span></h2>
+                <div style="font-size:0.95rem; opacity:0.8;">${t('totalGoodsValue')}</div>
+                <h2>${formatMoney(totalValue)} <span style="font-size:1.2rem; opacity:0.8;">${t('currency')}</span></h2>
                 <div style="display:flex; gap:10px; margin-top:15px; margin-bottom:20px;">
-                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${branchItems.length} صنف مسجل</span>
-                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${companies.length} شركة</span>
+                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${branchItems.length} ${t('itemsCount')}</span>
+                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${companies.length} ${t('companiesCount')}</span>
                 </div>
-                <button class="btn btn-accent" style="display:flex; justify-content:center; align-items:center; gap:10px; width:auto; padding:12px 25px;" onclick="navigate('goods')">← إدارة البضاعة</button>
+                <button class="btn btn-accent" style="display:flex; justify-content:center; align-items:center; gap:10px; width:auto; padding:12px 25px;" onclick="navigate('goods')">${t('manageGoods')}</button>
             </div>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
             <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center;">
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">مصروفات الشهر</div>
-                <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">0 <span style="font-size:0.9rem;">ج</span></div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">${t('monthExpenses')}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">0 <span style="font-size:0.9rem;">${t('currencyShort')}</span></div>
             </div>
             <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center;">
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">مبيعات اليوم</div>
-                <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">0 <span style="font-size:0.9rem;">ج</span></div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">${t('todaySales')}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">0 <span style="font-size:0.9rem;">${t('currencyShort')}</span></div>
             </div>
             <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center;">
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">عدد الأصناف</div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">${t('itemsNumber')}</div>
                 <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">${branchItems.length}</div>
             </div>
             <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center;">
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">ورديات مفتوحة</div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">${t('openShifts')}</div>
                 <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">${openShifts}</div>
             </div>
         </div>
 
         <div class="card" style="padding: 15px; margin-top:15px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h4 style="font-size:1.1rem; color: var(--primary);">آخر التوريدات</h4>
-                <span style="font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="navigate('supplies')">عرض الكل</span>
+                <h4 style="font-size:1.1rem; color: var(--primary);">${t('lastSupplies')}</h4>
+                <span style="font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="navigate('supplies')">${t('viewAll')}</span>
             </div>
             ${closedShifts.length ? closedShifts.map(s => `
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
@@ -71,11 +71,11 @@ async function renderDashboard() {
                     </div>
                     <div style="font-weight:800; color:var(--primary);">${formatMoney(s.total)}</div>
                 </div>
-            `).join('') : '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem;">لا يوجد توريدات حديثة</p>'}
+            `).join('') : `<p style="text-align:center; color:var(--text-muted); font-size:0.9rem;">${t('noRecentSupplies')}</p>`}
         </div>
 
         <div class="card" style="padding: 15px;">
-            <h4 style="font-size:1.1rem; color: var(--primary); margin-bottom:15px;">توزيع البضاعة (أعلى 4 شركات)</h4>
+            <h4 style="font-size:1.1rem; color: var(--primary); margin-bottom:15px;">${t('goodsDistribution')}</h4>
             ${companies.slice(0, 4).map(c => {
                 const compItems = branchItems.filter(i => i.company === c.name);
                 const compValue = compItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
@@ -98,23 +98,23 @@ async function renderDashboard() {
     renderBottomNav('dashboard');
 }
 
-// ==== شريط التنقل السفلي (ضفنا الإعدادات) ====
+// ==== شريط التنقل السفلي (مع الترجمة) ====
 function renderBottomNav(active) {
     const navs = [
-        { id: 'dashboard', name: 'نظرة', icon: '📊' },
-        { id: 'goods', name: 'البضاعة', icon: '📦' },
-        { id: 'shifts', name: 'الورديات', icon: '⏱️' },
-        { id: 'supplies', name: 'التوريدات', icon: '📋' },
-        { id: 'expenses', name: 'المصروفات', icon: '💸' },
-        { id: 'reports', name: 'تقرير', icon: '📈' },
-        { id: 'employee-settings', name: 'إعدادات', icon: '⚙️' }
+        { id: 'dashboard', name: t('dashboard'), icon: '📊' },
+        { id: 'goods', name: t('goods'), icon: '📦' },
+        { id: 'shifts', name: t('shifts'), icon: '⏱️' },
+        { id: 'supplies', name: t('supplies'), icon: '📋' },
+        { id: 'expenses', name: t('expenses'), icon: '💸' },
+        { id: 'reports', name: t('reports'), icon: '📈' },
+        { id: 'employee-settings', name: t('settings'), icon: '⚙️' }
     ];
 
     $('#bottom-nav').classList.remove('hidden');
     $('#bottom-nav').innerHTML = navs.map(n => `
         <button class="nav-item ${active === n.id ? 'active' : ''}" onclick="navigate('${n.id}')">
             <span style="font-size:1.2rem;">${n.icon}</span>
-            <span style="font-size:0.65rem;">${n.name}</span>
+            <span style="font-size:0.6rem;">${n.name}</span>
         </button>
     `).join('');
 }
