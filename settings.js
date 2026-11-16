@@ -27,7 +27,7 @@ async function checkAdminPass(btn) {
         <div class="bottom-sheet">
             <div class="bottom-sheet-header"><h2>⚙️ ${t('settings')}</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
             
-            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 ${t('activityLog')}</button>
+            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 إدارة حسابات الموظفين</button>
             
             <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px; background-color: var(--accent); color: #000;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderPriceManager();">💰 ${t('goods')} & ${t('price')}</button>
             
@@ -39,7 +39,6 @@ async function checkAdminPass(btn) {
                 </div>
             </div>
 
-            <!-- النسخة الاحتياطية -->
             <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
                 <label>💾 ${t('save')} (Backup)</label>
                 <div style="display:flex; gap:10px;">
@@ -62,7 +61,6 @@ function saveQtyPass() {
     alert(t('save') + ' ✓');
 }
 
-// ==== النسخة الاحتياطية (تصدير) ====
 async function exportBackup() {
     try {
         const backup = {
@@ -93,7 +91,6 @@ async function exportBackup() {
     }
 }
 
-// ==== النسخة الاحتياطية (استيراد) ====
 async function importBackup(input) {
     const file = input.files[0];
     if (!file) return;
@@ -107,7 +104,6 @@ async function importBackup(input) {
             
             const stores = ['branches', 'companies', 'items', 'additions', 'shifts', 'expenses', 'activities', 'report_emails', 'settings', 'profiles'];
             
-            // مسح البيانات القديمة
             for (let store of stores) {
                 const all = await getAll(store);
                 for (let item of all) {
@@ -115,12 +111,11 @@ async function importBackup(input) {
                 }
             }
             
-            // استيراد البيانات الجديدة
             for (let store of stores) {
                 if (backup[store] && Array.isArray(backup[store])) {
                     for (let item of backup[store]) {
                         const newItem = { ...item };
-                        delete newItem.id; // نخلي Supabase يعمل ID جديد
+                        delete newItem.id;
                         await addItem(store, newItem);
                     }
                 }
