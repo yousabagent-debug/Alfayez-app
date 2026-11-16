@@ -5,7 +5,6 @@ async function renderReports() {
     
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     
-    // فلترة التحركات بالفرع الحالي
     const activities = (await getAll('activities')).filter(a => a.branch_id === state.currentBranch.id);
     const reportEmails = (await getAll('report_emails')).filter(e => e.branch_id === state.currentBranch.id || !e.branch_id);
     const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
@@ -16,12 +15,12 @@ async function renderReports() {
     const net = totalSales - totalExpenses;
 
     $('#main-content').innerHTML = `
-        <h2 style="margin: 15px 0;">التقرير</h2>
-        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">كل حركة في اليوم: مبيعات، مصروفات، وتحركات المستخدمين</p>
+        <h2 style="margin: 15px 0;">${t('reports')}</h2>
+        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">${t('reportsDesc')}</p>
 
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="font-size:1.1rem;">📧 إيميلات التقارير</h3>
+                <h3 style="font-size:1.1rem;">${t('reportEmails')}</h3>
                 ${isAdmin ? `<button class="icon-btn" onclick="openAddEmailModal()" style="background:var(--primary); color:#fff;">+</button>` : ''}
             </div>
             <div id="emailsList">
@@ -30,32 +29,32 @@ async function renderReports() {
                         <span style="font-size:0.9rem;">${e.email}</span>
                         ${isAdmin ? `<button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="deleteReportEmail(${e.id})">🗑️</button>` : ''}
                     </div>
-                `).join('') : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">لا يوجد إيميلات مضافة</p>'}
+                `).join('') : `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">${t('noEmails')}</p>`}
             </div>
             <button class="btn btn-primary" style="margin-top:15px; display:flex; justify-content:center; gap:10px;" onclick="sendReport()">
-                📤 إرسال التقرير الآن
+                ${t('sendReport')}
             </button>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
             <div class="card" style="margin:0; padding:15px; text-align:center;">
-                <div style="font-size:0.75rem; color:var(--text-muted);">المبيعات</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('sales')}</div>
                 <div style="font-size:1.2rem; font-weight:800; color:var(--primary);">${formatMoney(totalSales)}</div>
             </div>
             <div class="card" style="margin:0; padding:15px; text-align:center;">
-                <div style="font-size:0.75rem; color:var(--text-muted);">المصروفات</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('expenses')}</div>
                 <div style="font-size:1.2rem; font-weight:800; color:var(--danger);">${formatMoney(totalExpenses)}</div>
             </div>
             <div class="card" style="margin:0; padding:15px; text-align:center;">
-                <div style="font-size:0.75rem; color:var(--text-muted);">الصافي</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('net')}</div>
                 <div style="font-size:1.2rem; font-weight:800; color:var(--success);">${formatMoney(net)}</div>
             </div>
         </div>
 
         ${isAdmin ? `
         <div class="card">
-            <h3 style="font-size:1.1rem; margin-bottom:15px;">📋 سجل التحركات</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">كل حركة يقوم بها المستخدمون مسجلة هنا</p>
+            <h3 style="font-size:1.1rem; margin-bottom:15px;">${t('activityLog')}</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">${t('activityLogDesc')}</p>
             
             ${activities.length ? activities.sort((a,b) => b.timestamp - a.timestamp).map(a => `
                 <div style="padding:12px 0; border-bottom:1px solid var(--border);">
@@ -66,7 +65,7 @@ async function renderReports() {
                     <div style="font-size:0.8rem; color:var(--text-muted);">${a.details}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">👤 ${a.user_email}</div>
                 </div>
-            `).join('') : '<p style="text-align:center; color:var(--text-muted);">لا يوجد تحركات مسجلة</p>'}
+            `).join('') : `<p style="text-align:center; color:var(--text-muted);">${t('noActivities')}</p>`}
         </div>
         ` : ''}
     `;
@@ -76,17 +75,17 @@ async function renderReports() {
 
 function openAddEmailModal() {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+    if (!isAdmin) return alert(t('noResults'));
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>إضافة إيميل جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="bottom-sheet-header"><h2>${t('addEmail')}</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
             <div class="input-group">
-                <label>البريد الإلكتروني</label>
-                <input type="email" id="newReportEmail" placeholder="example@email.com">
+                <label>${t('reportEmails')}</label>
+                <input type="email" id="newReportEmail" placeholder="${t('emailPlaceholder')}">
             </div>
-            <button class="btn-save" onclick="saveNewReportEmail(this)">حفظ الإيميل</button>
+            <button class="btn-save" onclick="saveNewReportEmail(this)">${t('saveEmail')}</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -100,7 +99,7 @@ async function saveNewReportEmail(btn) {
         return;
     }
     
-    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+    btn.innerText = t('loading'); btn.disabled = true;
     
     await addItem('report_emails', { email, branch_id: state.currentBranch.id });
     
@@ -110,7 +109,7 @@ async function saveNewReportEmail(btn) {
 
 async function deleteReportEmail(id) {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+    if (!isAdmin) return alert(t('noResults'));
 
     const pass = prompt('أدخل باسورد المدير:');
     if (pass !== '1358') return alert('باسورد خطأ!');
@@ -121,7 +120,7 @@ async function deleteReportEmail(id) {
 
 async function sendReport() {
     const emails = await getAll('report_emails');
-    if (emails.length === 0) return alert('أضف إيميل أولاً');
+    if (emails.length === 0) return alert(t('noEmails'));
 
     const branchName = state.currentBranch.name;
     const today = getToday();
@@ -136,60 +135,55 @@ async function sendReport() {
     let emailHtml = `
         <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto;">
             <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color: #0c2b21; margin: 0;">الفايز للزيوت والشحومات</h1>
-                <p style="color: #666; font-size: 14px;">تقرير الحركة اليومي</p>
+                <h1 style="color: #0c2b21; margin: 0;">${t('appName')}</h1>
+                <p style="color: #666; font-size: 14px;">${t('reportsDesc')}</p>
             </div>
-            
             <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                <h2 style="color: #333;">فرع: ${branchName}</h2>
-                <p style="color: #666;">التاريخ: ${today}</p>
-                
+                <h2 style="color: #333;">${t('selectBranch')}: ${branchName}</h2>
+                <p style="color: #666;">${t('date')}: ${today}</p>
                 <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 20px;">
                     <div style="background-color: #e8f5e9; padding: 10px; border-radius: 8px; width: 30%;">
-                        <div style="color: #666; font-size: 12px;">المبيعات</div>
+                        <div style="color: #666; font-size: 12px;">${t('sales')}</div>
                         <div style="font-size: 18px; font-weight: bold; color: #0c2b21;">${formatMoney(totalSales)}</div>
                     </div>
                     <div style="background-color: #ffebee; padding: 10px; border-radius: 8px; width: 30%;">
-                        <div style="color: #666; font-size: 12px;">المصروفات</div>
+                        <div style="color: #666; font-size: 12px;">${t('expenses')}</div>
                         <div style="font-size: 18px; font-weight: bold; color: #d32f2f;">${formatMoney(totalExpenses)}</div>
                     </div>
                     <div style="background-color: #e3f2fd; padding: 10px; border-radius: 8px; width: 30%;">
-                        <div style="color: #666; font-size: 12px;">الصافي</div>
+                        <div style="color: #666; font-size: 12px;">${t('net')}</div>
                         <div style="font-size: 18px; font-weight: bold; color: #1976d2;">${formatMoney(net)}</div>
                     </div>
                 </div>
             </div>
-            
             <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">الورديات</h3>
-                ${shifts.length === 0 ? '<p style="color: #999;">لا توجد ورديات محفوظة</p>' : ''}
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">${t('shifts')}</h3>
+                ${shifts.length === 0 ? `<p style="color: #999;">${t('noOpenShifts')}</p>` : ''}
                 ${shifts.map(s => `
                     <div style="margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
                         <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                            <span>${s.type} - ${s.employee}</span>
-                            <span>${formatMoney(s.total)} ج</span>
+                            <span>${s.type === 'نهارية' ? t('dayShift') : t('nightShift')} - ${s.employee}</span>
+                            <span>${formatMoney(s.total)} ${t('currencyShort')}</span>
                         </div>
                         <div style="font-size: 12px; color: #666; margin-bottom: 5px;">${s.date}</div>
                     </div>
                 `).join('')}
             </div>
-            
             <div style="background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">المصروفات</h3>
-                ${expenses.length === 0 ? '<p style="color: #999;">لا توجد مصروفات</p>' : ''}
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">${t('expenses')}</h3>
+                ${expenses.length === 0 ? `<p style="color: #999;">${t('noExpenses')}</p>` : ''}
                 <ul style="list-style: none; padding: 0;">
                     ${expenses.map(e => `
                         <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
                             <span>${e.title}</span>
-                            <span style="font-weight: bold; color: #d32f2f;">${formatMoney(e.total)} ج</span>
+                            <span style="font-weight: bold; color: #d32f2f;">${formatMoney(e.total)} ${t('currencyShort')}</span>
                         </li>
                     `).join('')}
                 </ul>
             </div>
-
             ${activities.length > 0 ? `
             <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
-                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">سجل التحركات</h3>
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">${t('activityLog')}</h3>
                 <ul style="list-style: none; padding: 0; font-size: 12px;">
                     ${activities.slice(0, 20).map(a => `
                         <li style="padding: 5px 0; border-bottom: 1px dotted #eee; color: #555;">
@@ -206,15 +200,15 @@ async function sendReport() {
         const { data, error } = await supabaseClient.functions.invoke('send-report', {
             body: {
                 to: emails.map(e => e.email),
-                subject: `تقرير الحركة اليومي — ${branchName} — ${today}`,
+                subject: `${t('reports')} — ${branchName} — ${today}`,
                 html: emailHtml
             }
         });
 
         if (error) throw error;
-        alert('تم إرسال التقرير بنجاح!');
+        alert(t('reportSent'));
     } catch (error) {
         console.error(error);
-        alert('حدث خطأ في إرسال التقرير: ' + error.message);
+        alert(error.message);
     }
 }
