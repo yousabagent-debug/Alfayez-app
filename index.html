@@ -26,7 +26,6 @@
             </div>
             <div style="display: flex; gap: 5px;">
                 <button class="icon-btn" onclick="navigate('branches')" title="الفروع">🔙</button>
-                <button class="icon-btn" onclick="location.reload(true)" title="تحديث">🔄</button>
                 <button class="icon-btn" onclick="openSettings()">⚙️</button>
                 <button class="icon-btn" onclick="logout()" style="color: var(--danger);">🚪</button>
             </div>
@@ -49,6 +48,7 @@
     <script src="pages/supplies.js"></script>
     <script src="pages/expenses.js"></script>
     <script src="pages/reports.js"></script>
+    <script src="pages/employee-settings.js"></script>
     <script src="app.js"></script>
 
     <script>
@@ -58,9 +58,7 @@
     </script>
 
     <script>
-        window.onerror = function(msg, url, line) {
-            alert('حدث خطأ: ' + msg + ' في السطر ' + line);
-        };
+        window.onerror = function(msg, url, line) { alert('حدث خطأ: ' + msg + ' في السطر ' + line); };
     </script>
 
 </body>
