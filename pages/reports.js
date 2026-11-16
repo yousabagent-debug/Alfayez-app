@@ -71,7 +71,6 @@ async function renderReports() {
     renderBottomNav('reports');
 }
 
-// ==== شاشة إضافة إيميل (للمدير بس) ====
 function openAddEmailModal() {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
@@ -106,23 +105,18 @@ async function saveNewReportEmail(btn) {
     renderReports();
 }
 
-// ==== حذف إيميل (للمدير بس) ====
+// ==== حذف إيميل (للمدير بس - باسورد ثابت 1358) ====
 async function deleteReportEmail(id) {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
 
-    if (await confirmManagerPass()) {
-        await deleteItem('report_emails', id);
-        renderReports();
-    }
-}
-
-async function confirmManagerPass() {
     const pass = prompt('أدخل باسورد المدير:');
-    if(pass === null) return false;
-    const managerPass = (await getAll('settings')).find(s => s.key === 'manager_pass').value;
-    if(pass !== managerPass) { alert('باسورد خطأ'); return false; }
-    return true;
+    if (pass !== '1358') {
+        return alert('باسورد خطأ!');
+    }
+
+    await deleteItem('report_emails', id);
+    renderReports();
 }
 
 // ==== إرسال التقرير ====
