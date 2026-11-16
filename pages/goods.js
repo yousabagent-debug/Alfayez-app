@@ -118,7 +118,10 @@ async function openCompany(companyName) {
 // ==== إدارة البضاعة (إضافة بضاعة) ====
 async function openManageGoods() {
     const additions = await getAll('additions');
-    const grouped = additions.reduce((acc, curr) => { if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); return acc; }, {});
+    // فلترة الإضافات الخاصة بالفرع
+    const branchAdditions = additions.filter(a => a.branch_id === state.currentBranch.id);
+    const grouped = branchAdditions.reduce((acc, curr) => { if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); return acc; }, {});
+    
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet" style="max-height: 90vh; overflow-y: auto;">
@@ -205,7 +208,15 @@ async function saveAllBatchItems(btn) {
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
     const items = await getAll('items');
     for (let batchItem of batchItemsArray) {
-        await addItem('additions', { date, company: batchItem.company, item_name: batchItem.item_name, qty: batchItem.qty, branch_id: state.currentBranch.id });
+        // حفظ الإضافة مع الفرع الحالي
+        await addItem('additions', { 
+            date, 
+            company: batchItem.company, 
+            item_name: batchItem.item_name, 
+            qty: batchItem.qty, 
+            branch_id: state.currentBranch.id 
+        });
+        
         const existingItem = items.find(i => i.name === batchItem.item_name && i.company === batchItem.company);
         if (existingItem) { existingItem.qty = (existingItem.qty || 0) + batchItem.qty; await updateItem('items', existingItem); }
     }
