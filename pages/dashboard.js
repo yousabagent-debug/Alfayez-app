@@ -3,21 +3,16 @@ async function renderDashboard() {
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
     
-    // جلب البيانات من السيرفر
     const items = await getAll('items');
     const shifts = await getAll('shifts');
     const companies = await getAll('companies');
     
-    // فلترة البيانات الخاصة بالفرع الحالي
-    const branchItems = items.filter(i => i.branch_id === state.currentBranch.id || !i.branch_id);
+    const branchItems = items.filter(i => i.branch_id === state.currentBranch.id);
     const branchShifts = shifts.filter(s => s.branch_id === state.currentBranch.id);
     
-    // حسابات
     let totalValue = branchItems.reduce((a,b) => a + ((b.qty||0) * (b.price||0)), 0);
     let openShifts = branchShifts.filter(s => !s.closed).length;
-    let companiesCount = companies.length;
     
-    // آخر 3 توريدات (ورديات مقفولة)
     const closedShifts = branchShifts.filter(s => s.closed).sort((a,b) => b.id - a.id).slice(0, 3);
 
     $('#main-content').innerHTML = `
@@ -38,15 +33,13 @@ async function renderDashboard() {
                 <h2>${formatMoney(totalValue)} <span style="font-size:1.2rem; opacity:0.8;">جنيه</span></h2>
                 <div style="display:flex; gap:10px; margin-top:15px; margin-bottom:20px;">
                     <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${branchItems.length} صنف مسجل</span>
-                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${companiesCount} شركة</span>
+                    <span style="background:rgba(255,255,255,0.1); padding:6px 15px; border-radius:20px; font-size:0.85rem;">${companies.length} شركة</span>
                 </div>
-                <button class="btn btn-accent" style="display:flex; justify-content:center; align-items:center; gap:10px; width:auto; padding:12px 25px;" onclick="navigate('goods')">
-                    ← إدارة البضاعة
-                </button>
+                <button class="btn btn-accent" style="display:flex; justify-content:center; align-items:center; gap:10px; width:auto; padding:12px 25px;" onclick="navigate('goods')">← إدارة البضاعة</button>
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
             <div class="card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center;">
                 <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">مصروفات الشهر</div>
                 <div style="font-size:1.6rem; font-weight:800; color:var(--primary);">0 <span style="font-size:0.9rem;">ج</span></div>
@@ -65,7 +58,7 @@ async function renderDashboard() {
             </div>
         </div>
 
-        <div class="card" style="padding: 15px;">
+        <div class="card" style="padding: 15px; margin-top:15px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h4 style="font-size:1.1rem; color: var(--primary);">آخر التوريدات</h4>
                 <span style="font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="navigate('supplies')">عرض الكل</span>
@@ -105,7 +98,7 @@ async function renderDashboard() {
     renderBottomNav('dashboard');
 }
 
-// ==== شريط التنقل السفلي ====
+// ==== شريط التنقل السفلي (ضفنا الإعدادات) ====
 function renderBottomNav(active) {
     const navs = [
         { id: 'dashboard', name: 'نظرة', icon: '📊' },
@@ -113,14 +106,15 @@ function renderBottomNav(active) {
         { id: 'shifts', name: 'الورديات', icon: '⏱️' },
         { id: 'supplies', name: 'التوريدات', icon: '📋' },
         { id: 'expenses', name: 'المصروفات', icon: '💸' },
-        { id: 'reports', name: 'تقرير', icon: '📈' }
+        { id: 'reports', name: 'تقرير', icon: '📈' },
+        { id: 'employee-settings', name: 'إعدادات', icon: '⚙️' }
     ];
 
     $('#bottom-nav').classList.remove('hidden');
     $('#bottom-nav').innerHTML = navs.map(n => `
         <button class="nav-item ${active === n.id ? 'active' : ''}" onclick="navigate('${n.id}')">
             <span style="font-size:1.2rem;">${n.icon}</span>
-            <span>${n.name}</span>
+            <span style="font-size:0.65rem;">${n.name}</span>
         </button>
     `).join('');
 }
