@@ -48,7 +48,7 @@ async function renderGoods() {
 
         <div id="searchResults" class="hidden" style="margin-top: 15px;"></div>
 
-        <!-- البضاعة المضافة (اللي بتظهر بالتاريخ) -->
+        <!-- البضاعة المضافة -->
         <div class="card" style="padding: 15px;">
             <h3 style="font-size:1.1rem; margin-bottom:15px;">البضاعة المضافة</h3>
             <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">أضف كميات جديدة على رصيد البضاعة الموجودة</p>
@@ -122,36 +122,65 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
+// ==== فتح صفحة شركة كاملة (بدون أزرار إضافة أو تعديل) ====
 async function openCompany(companyName) {
     const items = await getAll('items');
     const companyItems = items.filter(i => i.company === companyName && i.branch_id === state.currentBranch.id);
     const totalValue = companyItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
 
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet" style="max-height: 90vh; overflow-y: auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <div><h2 style="color:var(--primary);">${companyName}</h2><p style="font-size:0.85rem; color:var(--text-muted);">${companyItems.length} صنف · ${formatMoney(totalValue)} جنيه</p></div>
-                <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
+    // بنغير المحتوى الرئيسي بدل ما نفتح Bottom Sheet
+    $('#main-content').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="icon-btn" onclick="navigate('goods')">🔙</button>
+                <h2 style="margin:0;">${companyName}</h2>
             </div>
+            <span style="font-size:0.85rem; color:var(--text-muted);">${companyItems.length} صنف</span>
+        </div>
+
+        <div class="card card-primary" style="margin-bottom:15px;">
+            <div class="bg-pattern"></div>
+            <div style="position:relative; z-index:1;">
+                <div style="font-size:0.9rem; opacity:0.8;">إجمالي مبلغ البضاعة</div>
+                <h2>${formatMoney(totalValue)} <span style="font-size:1rem;">جنيه</span></h2>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0; overflow:hidden;">
             <div class="table-responsive">
-                <table style="width:100%; border-collapse:collapse;">
-                    <thead><tr style="background:var(--bg-color);"><th style="padding:10px; border-bottom:1px solid var(--border);">الصنف</th><th style="padding:10px; border-bottom:1px solid var(--border);">الكمية</th><th style="padding:10px; border-bottom:1px solid var(--border);">السعر</th><th style="padding:10px; border-bottom:1px solid var(--border);">القيمة</th></tr></thead>
+                <table style="width:100%; border-collapse:collapse; text-align:right;">
+                    <thead>
+                        <tr style="background:var(--bg-color);">
+                            <th style="padding:12px; border-bottom:1px solid var(--border); font-size:0.85rem;">الصنف</th>
+                            <th style="padding:12px; border-bottom:1px solid var(--border); font-size:0.85rem;">الكمية</th>
+                            <th style="padding:12px; border-bottom:1px solid var(--border); font-size:0.85rem;">سعر الصنف</th>
+                            <th style="padding:12px; border-bottom:1px solid var(--border); font-size:0.85rem;">القيمة</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         ${companyItems.length ? companyItems.map(i => `
                             <tr>
-                                <td style="padding:10px; border-bottom:1px solid var(--border); font-weight:700;">${i.name}</td>
-                                <td style="padding:10px; border-bottom:1px solid var(--border);">${i.qty || 0}</td>
-                                <td style="padding:10px; border-bottom:1px solid var(--border);">${i.price}</td>
-                                <td style="padding:10px; border-bottom:1px solid var(--border); font-weight:700;">${formatMoney((i.qty||0) * i.price)}</td>
+                                <td style="padding:12px; border-bottom:1px solid var(--border);">
+                                    <div style="font-weight:700;">${i.name}</div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted);">${i.company}</div>
+                                </td>
+                                <td style="padding:12px; border-bottom:1px solid var(--border); font-weight:700;">${i.qty || 0}</td>
+                                <td style="padding:12px; border-bottom:1px solid var(--border);">${formatMoney(i.price)}</td>
+                                <td style="padding:12px; border-bottom:1px solid var(--border); font-weight:700;">${formatMoney((i.qty||0) * i.price)}</td>
                             </tr>
                         `).join('') : '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد أصناف.</td></tr>'}
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <p style="font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:15px;">
+            تعديل السعر يُحدّث تلقائياً السعر المستخدم في فواتير الورديات القادمة فقط.
+        </p>
     `;
-    document.body.appendChild(overlay);
+    
+    // شريط التنقل السفلي يفضل زي ما هو
+    renderBottomNav('goods');
 }
 
 // ==== إضافة بضاعة (متعددة الشركات والأصناف) ====
