@@ -5,7 +5,9 @@ async function renderGoods() {
     
     const companies = await getAll('companies');
     const items = await getAll('items');
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    
+    // فلترة الأصناف الخاصة بالفرع (اللي ليها branch_id أو اللي ملهاش)
+    const branchItems = items.filter(i => i.branch_id === state.currentBranch.id || !i.branch_id);
 
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
@@ -13,7 +15,6 @@ async function renderGoods() {
             <div style="display:flex; gap:8px; flex-wrap: wrap;">
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openManageGoods()">إدارة البضاعة</button>
                 <button class="btn btn-outline" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddBatchSheet()">+ إضافة بضاعة</button>
-                ${isAdmin ? `<button class="btn btn-primary" style="width:auto; padding:8px 12px; margin:0; font-size:0.8rem;" onclick="openAddCompanySheet()">+ شركة</button>` : ''}
             </div>
         </div>
         
@@ -21,9 +22,9 @@ async function renderGoods() {
             <div class="bg-pattern"></div>
             <div style="position:relative; z-index:1;">
                 <div style="font-size:0.9rem; opacity:0.8;">إجمالي مبلغ البضاعة</div>
-                <h2>${formatMoney(items.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0))} <span style="font-size:1rem;">جنيه</span></h2>
+                <h2>${formatMoney(branchItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0))} <span style="font-size:1rem;">جنيه</span></h2>
                 <div style="display:flex; gap:10px; margin-top:10px;">
-                    <span style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:20px; font-size:0.8rem;">${items.length} صنف</span>
+                    <span style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:20px; font-size:0.8rem;">${branchItems.length} صنف</span>
                     <span style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:20px; font-size:0.8rem;">${companies.length} شركة</span>
                 </div>
             </div>
@@ -40,7 +41,7 @@ async function renderGoods() {
         <div id="companiesList">
             ${companies.length === 0 ? '<p style="text-align:center; color:var(--text-muted);">لا يوجد شركات.</p>' : ''}
             ${companies.map(c => {
-                const compItems = items.filter(i => i.company === c.name);
+                const compItems = branchItems.filter(i => i.company === c.name);
                 const compValue = compItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
                 return `
                     <div class="branch-card" onclick="openCompany('${c.name}')">
@@ -81,34 +82,11 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-function openAddCompanySheet() {
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>شركة / مورد جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>اسم الشركة</label><input type="text" id="newCompanyName" placeholder="مثال: التعاون"></div>
-            <button class="btn-save" onclick="saveNewCompany(this)">حفظ الشركة</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-async function saveNewCompany(btn) {
-    const name = document.getElementById('newCompanyName').value.trim();
-    if (!name) { document.getElementById('newCompanyName').style.borderColor = 'red'; return; }
-    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
-    await addItem('companies', { name });
-    btn.closest('.bottom-sheet-overlay').remove();
-    renderGoods();
-}
-
+// ==== شاشة الشركة (بدون إضافة صنف) ====
 async function openCompany(companyName) {
     const items = await getAll('items');
-    const companyItems = items.filter(i => i.company === companyName);
+    const companyItems = items.filter(i => i.company === companyName && (i.branch_id === state.currentBranch.id || !i.branch_id));
     const totalValue = companyItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -117,15 +95,12 @@ async function openCompany(companyName) {
                 <div><h2 style="color:var(--primary);">${companyName}</h2><p style="font-size:0.85rem; color:var(--text-muted);">${companyItems.length} صنف · ${formatMoney(totalValue)} جنيه</p></div>
                 <button class="icon-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button>
             </div>
-            <div style="display:flex; gap:10px; margin-bottom:20px;">
-                ${isAdmin ? `<button class="btn btn-outline" style="flex:1; border-color:var(--primary); color:var(--primary);" onclick="openAddItemSheet('${companyName}')">+ إضافة صنف</button>` : ''}
-            </div>
             <div class="table-responsive">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead><tr style="background:var(--bg-color);"><th style="padding:10px; border-bottom:1px solid var(--border);">الصنف</th><th style="padding:10px; border-bottom:1px solid var(--border);">الكمية</th><th style="padding:10px; border-bottom:1px solid var(--border);">السعر</th><th style="padding:10px; border-bottom:1px solid var(--border);">القيمة</th></tr></thead>
                     <tbody>
                         ${companyItems.length ? companyItems.map(i => `
-                            <tr onclick="requestEditItem(${i.id}, '${companyName}')" style="cursor:pointer;">
+                            <tr>
                                 <td style="padding:10px; border-bottom:1px solid var(--border); font-weight:700;">${i.name}</td>
                                 <td style="padding:10px; border-bottom:1px solid var(--border);">${i.qty || 0}</td>
                                 <td style="padding:10px; border-bottom:1px solid var(--border);">${i.price}</td>
@@ -140,105 +115,7 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-async function requestEditItem(itemId, companyName) {
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (isAdmin) {
-        openEditItemSheet(itemId, companyName, true);
-    } else {
-        const overlay = createEl('div', 'bottom-sheet-overlay');
-        overlay.innerHTML = `
-            <div class="bottom-sheet">
-                <div class="bottom-sheet-header"><h2>تعديل الكمية</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-                <div class="input-group"><label>أدخل باسورد تعديل الكمية</label><input type="password" id="qtyPassInputUser" placeholder="********"></div>
-                <button class="btn-save" onclick="checkQtyPassForEdit(${itemId}, '${companyName}')">دخول</button>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-        setTimeout(() => document.getElementById('qtyPassInputUser').focus(), 100);
-    }
-}
-
-async function checkQtyPassForEdit(itemId, companyName) {
-    const requiredPass = localStorage.getItem('qtyEditPass') || '1234';
-    const entered = document.getElementById('qtyPassInputUser').value;
-    if (entered !== requiredPass) { document.getElementById('qtyPassInputUser').style.borderColor = 'red'; return; }
-    document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
-    openEditItemSheet(itemId, companyName, false);
-}
-
-async function openEditItemSheet(itemId, companyName, isAdmin) {
-    document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
-    const item = await getById('items', itemId);
-    if (!item) return;
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>تعديل الصنف</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>اسم الصنف</label><input type="text" id="editItemName" value="${item.name}" ${!isAdmin ? 'disabled' : ''}></div>
-            <div style="display:flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>الكمية</label><input type="number" id="editItemQty" value="${item.qty || 0}"></div>
-                <div class="input-group" style="flex:1;"><label>سعر الصنف</label><input type="number" id="editItemPrice" value="${item.price || 0}" ${!isAdmin ? 'disabled' : ''}></div>
-            </div>
-            ${!isAdmin ? '<p style="font-size:0.8rem; color:var(--accent); margin-top:5px;">يمكنك تعديل الكمية فقط. السعر يعدله المدير.</p>' : ''}
-            <button class="btn-save" onclick="saveEditItem(${item.id}, '${companyName}', ${isAdmin}, this)">حفظ التعديل</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-async function saveEditItem(itemId, companyName, isAdmin, btn) {
-    const name = isAdmin ? document.getElementById('editItemName').value.trim() : null;
-    const qty = parseFloat(document.getElementById('editItemQty').value) || 0;
-    const price = isAdmin ? parseFloat(document.getElementById('editItemPrice').value) || 0 : null;
-
-    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
-    
-    if (isAdmin) {
-        await updateItem('items', { id: itemId, name, company: companyName, qty, price });
-        await logActivity('تعديل صنف', `تم تعديل الصنف ${name} (الكمية: ${qty}, السعر: ${price})`);
-    } else {
-        const item = await getById('items', itemId);
-        await updateItem('items', { ...item, qty });
-        await logActivity('تعديل كمية', `قام الموظف بتعديل كمية الصنف ${item.name} إلى ${qty}`);
-    }
-    
-    btn.closest('.bottom-sheet-overlay').remove();
-    openCompany(companyName);
-}
-
-function openAddItemSheet(companyName) {
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
-    document.querySelectorAll('.bottom-sheet-overlay').forEach(el => el.remove());
-    const overlay = createEl('div', 'bottom-sheet-overlay');
-    overlay.innerHTML = `
-        <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>صنف جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>اسم الصنف</label><input type="text" id="newItemName" placeholder="مثال: زيت 1 لتر"></div>
-            <div style="display:flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>الكمية</label><input type="number" id="newItemQty" value="0"></div>
-                <div class="input-group" style="flex:1;"><label>سعر الصنف</label><input type="number" id="newItemPrice" value="0"></div>
-            </div>
-            <button class="btn-save" onclick="saveNewItem('${companyName}', this)">حفظ الصنف</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-async function saveNewItem(companyName, btn) {
-    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
-    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
-    const name = document.getElementById('newItemName').value.trim();
-    const qty = parseFloat(document.getElementById('newItemQty').value) || 0;
-    const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
-    if (!name) { document.getElementById('newItemName').style.borderColor = 'red'; return; }
-    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
-    await addItem('items', { name, company: companyName, price, qty });
-    await logActivity('إضافة صنف جديد', `تمت إضافة صنف ${name} لشركة ${companyName}`);
-    btn.closest('.bottom-sheet-overlay').remove();
-    openCompany(companyName);
-}
-
+// ==== إدارة البضاعة (إضافة بضاعة) ====
 async function openManageGoods() {
     const additions = await getAll('additions');
     const grouped = additions.reduce((acc, curr) => { if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); return acc; }, {});
@@ -266,6 +143,7 @@ async function openManageGoods() {
     document.body.appendChild(overlay);
 }
 
+// ==== إضافة بضاعة (متعددة الشركات والأصناف) ====
 let batchItemsArray = [];
 async function openAddBatchSheet() {
     batchItemsArray = [];
@@ -327,10 +205,9 @@ async function saveAllBatchItems(btn) {
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
     const items = await getAll('items');
     for (let batchItem of batchItemsArray) {
-        await addItem('additions', { date, company: batchItem.company, item_name: batchItem.item_name, qty: batchItem.qty });
+        await addItem('additions', { date, company: batchItem.company, item_name: batchItem.item_name, qty: batchItem.qty, branch_id: state.currentBranch.id });
         const existingItem = items.find(i => i.name === batchItem.item_name && i.company === batchItem.company);
         if (existingItem) { existingItem.qty = (existingItem.qty || 0) + batchItem.qty; await updateItem('items', existingItem); }
-        await logActivity('إضافة بضاعة', `تمت إضافة ${batchItem.qty} من ${batchItem.item_name} (${batchItem.company})`);
     }
     btn.closest('.bottom-sheet-overlay').remove();
     renderGoods();
