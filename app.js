@@ -12,7 +12,7 @@ const createEl = (tag, className, innerHTML) => {
 const formatMoney = (num) => new Intl.NumberFormat('en-US').format(num || 0);
 const getToday = () => new Date().toISOString().split('T')[0];
 
-// ==== تسجيل الحركات ====
+// ==== تسجيل الحركات (مع الفرع) ====
 async function logActivity(action, details) {
     try {
         await addItem('activities', {
@@ -20,7 +20,7 @@ async function logActivity(action, details) {
             details: details,
             user_email: state.userProfile ? state.userProfile.email : 'غير معروف',
             branch_name: state.currentBranch ? state.currentBranch.name : 'غير معروف',
-            branch_id: state.currentBranch ? state.currentBranch.id : null, // ضفنا الفرع هنا
+            branch_id: state.currentBranch ? state.currentBranch.id : null,
             date: new Date().toLocaleString('ar-EG'),
             timestamp: Date.now()
         });
