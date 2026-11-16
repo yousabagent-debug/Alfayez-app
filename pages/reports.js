@@ -5,7 +5,8 @@ async function renderReports() {
     
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     
-    const activities = await getAll('activities');
+    // فلترة التحركات بالفرع الحالي
+    const activities = (await getAll('activities')).filter(a => a.branch_id === state.currentBranch.id);
     const reportEmails = (await getAll('report_emails')).filter(e => e.branch_id === state.currentBranch.id || !e.branch_id);
     const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
     const shifts = (await getAll('shifts')).filter(s => s.closed && s.branch_id === state.currentBranch.id);
@@ -51,7 +52,6 @@ async function renderReports() {
             </div>
         </div>
 
-        <!-- سجل التحركات يظهر للمدير بس -->
         ${isAdmin ? `
         <div class="card">
             <h3 style="font-size:1.1rem; margin-bottom:15px;">📋 سجل التحركات</h3>
@@ -127,7 +127,7 @@ async function sendReport() {
     const today = getToday();
     const shifts = (await getAll('shifts')).filter(s => s.closed && s.branch_id === state.currentBranch.id);
     const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
-    const activities = await getAll('activities');
+    const activities = (await getAll('activities')).filter(a => a.branch_id === state.currentBranch.id);
 
     const totalSales = shifts.reduce((a,b) => a + (b.total || 0), 0);
     const totalExpenses = expenses.reduce((a,b) => a + (b.total || 0), 0);
@@ -186,6 +186,19 @@ async function sendReport() {
                     `).join('')}
                 </ul>
             </div>
+
+            ${activities.length > 0 ? `
+            <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
+                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">سجل التحركات</h3>
+                <ul style="list-style: none; padding: 0; font-size: 12px;">
+                    ${activities.slice(0, 20).map(a => `
+                        <li style="padding: 5px 0; border-bottom: 1px dotted #eee; color: #555;">
+                            <b>${a.user_email}</b> - ${a.action}: ${a.details} <span style="color: #999;">(${a.date})</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            ` : ''}
         </div>
     `;
 
