@@ -7,6 +7,7 @@ async function renderDashboard() {
     const shifts = await getAll('shifts');
     const companies = await getAll('companies');
     
+    // فلترة البيانات الخاصة بالفرع الحالي
     const branchItems = items.filter(i => i.branch_id === state.currentBranch.id);
     const branchShifts = shifts.filter(s => s.branch_id === state.currentBranch.id);
     
