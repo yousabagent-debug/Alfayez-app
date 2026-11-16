@@ -1,14 +1,14 @@
 async function openSettings() {
     if (!state.userProfile || state.userProfile.role !== 'admin') {
-        return alert('هذه الصفحة للمدير فقط');
+        return alert(t('noResults'));
     }
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>باسورد المدير</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>أدخل باسورد المدير</label><input type="password" id="adminPassInput" placeholder="********"></div>
-            <button class="btn-save" onclick="checkAdminPass(this)">دخول</button>
+            <div class="bottom-sheet-header"><h2>${t('settings')}</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group"><label>${t('language')}</label><input type="password" id="adminPassInput" placeholder="********"></div>
+            <button class="btn-save" onclick="checkAdminPass(this)">${t('confirm')}</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -20,28 +20,36 @@ async function checkAdminPass(btn) {
     if (pass !== '1358') { document.getElementById('adminPassInput').style.borderColor = 'red'; return; }
     btn.closest('.bottom-sheet-overlay').remove();
     
-    // قراءة باسورد تعديل الكمية من localStorage (أو الافتراضي 1234)
     let qtyPass = localStorage.getItem('qtyEditPass') || '1234';
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>⚙️ إعدادات المدير</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="bottom-sheet-header"><h2>⚙️ ${t('settings')}</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
             
-            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 إدارة الحسابات والموظفين</button>
+            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderAdminPanel();">👥 ${t('activityLog')}</button>
             
-            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px; background-color: var(--accent); color: #000;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderPriceManager();">💰 إدارة الأسعار والشركات</button>
+            <button class="btn btn-primary" style="margin-bottom:10px; display:flex; justify-content:center; gap:10px; background-color: var(--accent); color: #000;" onclick="this.closest('.bottom-sheet-overlay').remove(); renderPriceManager();">💰 ${t('goods')} & ${t('price')}</button>
             
             <div class="input-group" style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
-                <label>باسورد تعديل الكمية (للموظفين)</label>
+                <label>${t('quantity')} Password</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="text" id="qtyPassInput" value="${qtyPass}" placeholder="مثال: 1234" style="margin-bottom:0;">
-                    <button class="btn btn-primary" style="width:auto; padding:0 20px; margin:0;" onclick="saveQtyPass()">حفظ</button>
+                    <input type="text" id="qtyPassInput" value="${qtyPass}" style="margin-bottom:0;">
+                    <button class="btn btn-primary" style="width:auto; padding:0 20px; margin:0;" onclick="saveQtyPass()">${t('save')}</button>
                 </div>
-                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">الموظف هيحتاج الباسورد ده عشان يعدل كمية أي صنف.</p>
+            </div>
+
+            <!-- النسخة الاحتياطية -->
+            <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                <label>💾 ${t('save')} (Backup)</label>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" style="flex:1; margin:0;" onclick="exportBackup()">📤 ${t('save')}</button>
+                    <button class="btn btn-outline" style="flex:1; margin:0;" onclick="document.getElementById('importFile').click()">📥 ${t('add')}</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importBackup(this)">
+                </div>
             </div>
             
-            <button class="btn btn-outline" style="margin-top:20px; color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 تسجيل الخروج</button>
+            <button class="btn btn-outline" style="margin-top:20px; color:var(--danger); border-color:var(--danger);" onclick="signOut()">🚪 ${t('logout')}</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -49,9 +57,82 @@ async function checkAdminPass(btn) {
 
 function saveQtyPass() {
     const newPass = document.getElementById('qtyPassInput').value.trim();
-    if (!newPass) return alert('اكتب باسورد صحيح');
+    if (!newPass) return alert(t('fillAll'));
     localStorage.setItem('qtyEditPass', newPass);
-    alert('تم حفظ باسورد تعديل الكمية بنجاح!');
+    alert(t('save') + ' ✓');
+}
+
+// ==== النسخة الاحتياطية (تصدير) ====
+async function exportBackup() {
+    try {
+        const backup = {
+            branches: await getAll('branches'),
+            companies: await getAll('companies'),
+            items: await getAll('items'),
+            additions: await getAll('additions'),
+            shifts: await getAll('shifts'),
+            expenses: await getAll('expenses'),
+            activities: await getAll('activities'),
+            report_emails: await getAll('report_emails'),
+            settings: await getAll('settings'),
+            profiles: await getAll('profiles'),
+            exportDate: new Date().toISOString()
+        };
+
+        const dataStr = JSON.stringify(backup, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `alfayez-backup-${getToday()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        alert('تم تصدير النسخة الاحتياطية بنجاح!');
+    } catch (e) {
+        alert('خطأ في التصدير: ' + e.message);
+    }
+}
+
+// ==== النسخة الاحتياطية (استيراد) ====
+async function importBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (!confirm('سيتم استبدال جميع البيانات الحالية. هل أنت متأكد؟')) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const backup = JSON.parse(e.target.result);
+            
+            const stores = ['branches', 'companies', 'items', 'additions', 'shifts', 'expenses', 'activities', 'report_emails', 'settings', 'profiles'];
+            
+            // مسح البيانات القديمة
+            for (let store of stores) {
+                const all = await getAll(store);
+                for (let item of all) {
+                    await deleteItem(store, item.id);
+                }
+            }
+            
+            // استيراد البيانات الجديدة
+            for (let store of stores) {
+                if (backup[store] && Array.isArray(backup[store])) {
+                    for (let item of backup[store]) {
+                        const newItem = { ...item };
+                        delete newItem.id; // نخلي Supabase يعمل ID جديد
+                        await addItem(store, newItem);
+                    }
+                }
+            }
+            
+            alert('تم استيراد النسخة الاحتياطية بنجاح! سيتم تحديث الصفحة.');
+            setTimeout(() => location.reload(), 1000);
+        } catch (err) {
+            alert('خطأ في الاستيراد: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
 }
 
 function logout() {
