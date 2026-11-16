@@ -20,6 +20,7 @@ async function logActivity(action, details) {
             details: details,
             user_email: state.userProfile ? state.userProfile.email : 'غير معروف',
             branch_name: state.currentBranch ? state.currentBranch.name : 'غير معروف',
+            branch_id: state.currentBranch ? state.currentBranch.id : null, // ضفنا الفرع هنا
             date: new Date().toLocaleString('ar-EG'),
             timestamp: Date.now()
         });
