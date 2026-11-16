@@ -3,6 +3,8 @@ async function renderReports() {
     document.body.style.background = '#f9f9f9';
     $('#main-header').style.display = 'flex';
     
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    
     const activities = await getAll('activities');
     const reportEmails = (await getAll('report_emails')).filter(e => e.branch_id === state.currentBranch.id || !e.branch_id);
     const expenses = (await getAll('expenses')).filter(e => e.branch_id === state.currentBranch.id);
@@ -19,13 +21,13 @@ async function renderReports() {
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h3 style="font-size:1.1rem;">📧 إيميلات التقارير</h3>
-                <button class="icon-btn" onclick="openAddEmailModal()" style="background:var(--primary); color:#fff;">+</button>
+                ${isAdmin ? `<button class="icon-btn" onclick="openAddEmailModal()" style="background:var(--primary); color:#fff;">+</button>` : ''}
             </div>
             <div id="emailsList">
                 ${reportEmails.length ? reportEmails.map(e => `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
                         <span style="font-size:0.9rem;">${e.email}</span>
-                        <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="deleteReportEmail(${e.id})">🗑️</button>
+                        ${isAdmin ? `<button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="deleteReportEmail(${e.id})">🗑️</button>` : ''}
                     </div>
                 `).join('') : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">لا يوجد إيميلات مضافة</p>'}
             </div>
@@ -69,7 +71,11 @@ async function renderReports() {
     renderBottomNav('reports');
 }
 
+// ==== شاشة إضافة إيميل (للمدير بس) ====
 function openAddEmailModal() {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
@@ -100,7 +106,11 @@ async function saveNewReportEmail(btn) {
     renderReports();
 }
 
+// ==== حذف إيميل (للمدير بس) ====
 async function deleteReportEmail(id) {
+    const isAdmin = state.userProfile && state.userProfile.role === 'admin';
+    if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
+
     if (await confirmManagerPass()) {
         await deleteItem('report_emails', id);
         renderReports();
@@ -130,7 +140,6 @@ async function sendReport() {
     const totalExpenses = expenses.reduce((a,b) => a + (b.total || 0), 0);
     const net = totalSales - totalExpenses;
 
-    // تجهيز شكل الإيميل HTML هنا في التطبيق
     let emailHtml = `
         <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -177,7 +186,7 @@ async function sendReport() {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${(s.invoice_items || []).map(i => `
+                                ${(s.invoice_data || s.invoice_items || []).map(i => `
                                     <tr>
                                         <td style="text-align: right; padding: 5px;">${i.name}</td>
                                         <td style="text-align: center; padding: 5px;">${i.qty}</td>
