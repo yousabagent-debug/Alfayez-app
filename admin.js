@@ -145,11 +145,22 @@ function toggleAdminCompanyItems(companyName) {
 
 async function updatePrice(itemId, newPrice) {
     if (!newPrice) return;
-    const { error } = await supabaseClient.from('items').update({ price: parseFloat(newPrice) }).eq('id', itemId);
-    if (error) { alert('خطأ في تحديث السعر'); return; }
-    alert('تم تحديث السعر بنجاح!');
+    // بنحدث سعر الصنف في كل الفروع
+    const items = await getAll('items');
+    const itemToUpdate = items.find(i => i.id === itemId);
+    if (!itemToUpdate) return;
+
+    // تحديث كل الأصناف اللي ليها نفس الاسم والشركة
+    for (let item of items) {
+        if (item.name === itemToUpdate.name && item.company === itemToUpdate.company) {
+            item.price = parseFloat(newPrice);
+            await updateItem('items', item);
+        }
+    }
+    alert('تم تحديث السعر في كل الفروع!');
 }
 
+// ==== إضافة شركة من شاشة الإدارة ====
 function openAddCompanySheetAdmin() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -171,6 +182,7 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
+// ==== إضافة صنف من شاشة الإدارة (بيضيف لكل الفروع) ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -178,7 +190,6 @@ function openAddItemSheetAdmin(companyName) {
             <div class="bottom-sheet-header"><h2>صنف جديد</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
             <div class="input-group"><label>اسم الصنف</label><input type="text" id="adminNewItemName" placeholder="مثال: زيت 1 لتر"></div>
             <div style="display:flex; gap:10px;">
-                <div class="input-group" style="flex:1;"><label>الكمية</label><input type="number" id="adminNewItemQty" value="0"></div>
                 <div class="input-group" style="flex:1;"><label>السعر</label><input type="number" id="adminNewItemPrice" value="0"></div>
             </div>
             <button class="btn-save" onclick="saveNewItemAdmin('${companyName}', this)">حفظ الصنف</button>
@@ -189,13 +200,27 @@ function openAddItemSheetAdmin(companyName) {
 
 async function saveNewItemAdmin(companyName, btn) {
     const name = document.getElementById('adminNewItemName').value.trim();
-    const qty = parseFloat(document.getElementById('adminNewItemQty').value) || 0;
     const price = parseFloat(document.getElementById('adminNewItemPrice').value) || 0;
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
-    await addItem('items', { name, company: companyName, price, qty });
+
+    // جلب كل الفروع
+    const branches = await getAll('branches');
+
+    // إضافة الصنف لكل فرع بكمية صفر
+    for (let branch of branches) {
+        await addItem('items', { 
+            name, 
+            company: companyName, 
+            price, 
+            qty: 0,
+            branch_id: branch.id 
+        });
+    }
+
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
+    alert('تمت إضافة الصنف لكل الفروع بكمية صفر');
 }
 
 async function startDeleteCompany(companyName) {
@@ -225,7 +250,16 @@ async function startDeleteItem(itemId) {
     const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟');
     if (!confirm3) return;
 
-    await deleteItem('items', itemId);
-    alert('تم حذف الصنف');
+    const item = await getById('items', itemId);
+    if (!item) return;
+
+    // حذف الصنف من كل الفروع
+    const items = await getAll('items');
+    for (let i of items) {
+        if (i.name === item.name && i.company === item.company) {
+            await deleteItem('items', i.id);
+        }
+    }
+    alert('تم حذف الصنف من كل الفروع');
     renderPriceManager();
 }
