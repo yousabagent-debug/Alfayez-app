@@ -12,7 +12,7 @@ const createEl = (tag, className, innerHTML) => {
 const formatMoney = (num) => new Intl.NumberFormat('en-US').format(num || 0);
 const getToday = () => new Date().toISOString().split('T')[0];
 
-// ==== تسجيل الحركات (مع الفرع) ====
+// ==== تسجيل الحركات ====
 async function logActivity(action, details) {
     try {
         await addItem('activities', {
@@ -83,6 +83,7 @@ async function render() {
     if (state.screen === 'supplies') return renderSupplies();
     if (state.screen === 'expenses') return renderExpenses();
     if (state.screen === 'reports') return renderReports();
+    if (state.screen === 'employee-settings') return renderEmployeeSettings();
     
     $('#main-content').innerHTML = `<h2 style="text-align:center; margin-top:50px;">قيد الإنشاء...</h2>`;
     renderBottomNav(state.screen);
