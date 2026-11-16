@@ -189,7 +189,7 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
-// ==== إضافة صنف من شاشة الإدارة (بيضيف لكل الفروع) ====
+// ==== إضافة صنف من شاشة الإدارة (صنف واحد بس) ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -209,23 +209,18 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    // جلب كل الفروع
-    const branches = await getAll('branches');
-
-    // إضافة الصنف لكل فرع بكمية صفر
-    for (let branch of branches) {
-        await addItem('items', { 
-            name, 
-            company: companyName, 
-            price, 
-            qty: 0,
-            branch_id: branch.id 
-        });
-    }
+    // بنضيف الصنف مرة واحدة بس (من غير branch_id)
+    await addItem('items', { 
+        name, 
+        company: companyName, 
+        price, 
+        qty: 0,
+        branch_id: null
+    });
 
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الصنف لكل الفروع بكمية صفر');
+    alert('تمت إضافة الصنف لكل الفروع');
 }
 
 async function startDeleteCompany(companyName) {
@@ -263,4 +258,4 @@ async function startDeleteItem(itemName, companyName) {
     }
     alert('تم حذف الصنف من كل الفروع');
     renderPriceManager();
-        }
+}
