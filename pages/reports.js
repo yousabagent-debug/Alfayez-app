@@ -105,21 +105,18 @@ async function saveNewReportEmail(btn) {
     renderReports();
 }
 
-// ==== حذف إيميل (للمدير بس - باسورد ثابت 1358) ====
 async function deleteReportEmail(id) {
     const isAdmin = state.userProfile && state.userProfile.role === 'admin';
     if (!isAdmin) return alert('هذه الصلاحية للمدير فقط');
 
     const pass = prompt('أدخل باسورد المدير:');
-    if (pass !== '1358') {
-        return alert('باسورد خطأ!');
-    }
+    if (pass !== '1358') return alert('باسورد خطأ!');
 
     await deleteItem('report_emails', id);
     renderReports();
 }
 
-// ==== إرسال التقرير ====
+// ==== إرسال التقرير (مع طباعة الخطأ) ====
 async function sendReport() {
     const emails = await getAll('report_emails');
     if (emails.length === 0) return alert('أضف إيميل أولاً');
@@ -229,10 +226,14 @@ async function sendReport() {
             }
         });
 
-        if (error) throw error;
+        if (error) {
+            // هنا بنطبع الخطأ الحقيقي اللي جاي من Supabase
+            alert('الخطأ الحقيقي: ' + JSON.stringify(error));
+            throw error;
+        }
         alert('تم إرسال التقرير بنجاح!');
     } catch (error) {
-        console.error(error);
-        alert('حدث خطأ في إرسال التقرير: ' + error.message);
+        // لو فيه خطأ تاني، هنطبعه
+        alert('خطأ في الإرسال: ' + error.message);
     }
 }
