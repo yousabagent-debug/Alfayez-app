@@ -6,8 +6,8 @@ async function renderGoods() {
     const companies = await getAll('companies');
     const items = await getAll('items');
     
-    // فلترة الأصناف الخاصة بالفرع (اللي ليها branch_id أو اللي ملهاش)
-    const branchItems = items.filter(i => i.branch_id === state.currentBranch.id || !i.branch_id);
+    // فلترة الأصناف الخاصة بالفرع الحالي بس
+    const branchItems = items.filter(i => i.branch_id === state.currentBranch.id);
 
     $('#main-content').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
@@ -70,7 +70,7 @@ async function searchItems(query) {
     if (!query.trim()) { resDiv.classList.add('hidden'); return; }
     const items = await getAll('items');
     const searchTerm = query.trim().toLowerCase();
-    const res = items.filter(i => i.name.toLowerCase().includes(searchTerm) || i.company.toLowerCase().includes(searchTerm));
+    const res = items.filter(i => (i.branch_id === state.currentBranch.id) && (i.name.toLowerCase().includes(searchTerm) || i.company.toLowerCase().includes(searchTerm)));
     resDiv.classList.remove('hidden');
     resDiv.innerHTML = res.length ? res.map(i => `
         <div class="card" style="padding:15px; margin-bottom:10px;">
@@ -82,10 +82,9 @@ async function searchItems(query) {
     `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted);">لا يوجد نتائج</p>';
 }
 
-// ==== شاشة الشركة (بدون إضافة صنف) ====
 async function openCompany(companyName) {
     const items = await getAll('items');
-    const companyItems = items.filter(i => i.company === companyName && (i.branch_id === state.currentBranch.id || !i.branch_id));
+    const companyItems = items.filter(i => i.company === companyName && i.branch_id === state.currentBranch.id);
     const totalValue = companyItems.reduce((a,b) => a + ((b.qty||0)*(b.price||0)), 0);
 
     const overlay = createEl('div', 'bottom-sheet-overlay');
@@ -115,7 +114,6 @@ async function openCompany(companyName) {
     document.body.appendChild(overlay);
 }
 
-// ==== إدارة البضاعة (إضافة بضاعة) ====
 async function openManageGoods() {
     const additions = await getAll('additions');
     // فلترة الإضافات الخاصة بالفرع
@@ -175,7 +173,7 @@ async function updateBatchItems() {
     itemSelect.innerHTML = '<option value="">اختر الصنف...</option>';
     if (!company) return;
     const items = await getAll('items');
-    const companyItems = items.filter(i => i.company === company);
+    const companyItems = items.filter(i => i.company === company && i.branch_id === state.currentBranch.id);
     companyItems.forEach(i => { itemSelect.innerHTML += `<option value="${i.name}">${i.name}</option>`; });
 }
 
@@ -206,9 +204,11 @@ async function saveAllBatchItems(btn) {
     if (!date) return alert('اختر التاريخ');
     if (batchItemsArray.length === 0) return alert('أضف صنف واحد على الأقل');
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+    
     const items = await getAll('items');
+    
     for (let batchItem of batchItemsArray) {
-        // حفظ الإضافة مع الفرع الحالي
+        // 1. حفظ الإضافة في جدول الإضافات
         await addItem('additions', { 
             date, 
             company: batchItem.company, 
@@ -217,9 +217,27 @@ async function saveAllBatchItems(btn) {
             branch_id: state.currentBranch.id 
         });
         
-        const existingItem = items.find(i => i.name === batchItem.item_name && i.company === batchItem.company);
-        if (existingItem) { existingItem.qty = (existingItem.qty || 0) + batchItem.qty; await updateItem('items', existingItem); }
+        // 2. البحث عن الصنف في نفس الفرع
+        const existingItem = items.find(i => 
+            i.name === batchItem.item_name && 
+            i.company === batchItem.company &&
+            i.branch_id === state.currentBranch.id
+        );
+        
+        if (existingItem) {
+            existingItem.qty = (existingItem.qty || 0) + batchItem.qty;
+            await updateItem('items', existingItem);
+        } else {
+            await addItem('items', { 
+                name: batchItem.item_name, 
+                company: batchItem.company, 
+                price: 0, 
+                qty: batchItem.qty,
+                branch_id: state.currentBranch.id 
+            });
+        }
     }
+    
     btn.closest('.bottom-sheet-overlay').remove();
     renderGoods();
 }
@@ -228,7 +246,7 @@ async function deleteAdditionDate(date, btn) {
     if (!confirm('هل أنت متأكد من حذف إضافات هذا التاريخ؟')) return;
     const additions = await getAll('additions'); const toDelete = additions.filter(a => a.date === date);
     for (let add of toDelete) {
-        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company);
+        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', add.id);
     }
@@ -239,7 +257,7 @@ async function deleteSingleAddition(id, btn) {
     if (!confirm('حذف هذه الإضافة؟')) return;
     const add = await getById('additions', id);
     if (add) {
-        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company);
+        const items = await getAll('items'); const item = items.find(i => i.name === add.item_name && i.company === add.company && i.branch_id === state.currentBranch.id);
         if (item) { item.qty -= add.qty; await updateItem('items', item); }
         await deleteItem('additions', id);
     }
