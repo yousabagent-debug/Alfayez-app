@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alfayez-v16';
+const CACHE_NAME = 'alfayez-v17';
 const ASSETS = [
   './',
   './index.html',
