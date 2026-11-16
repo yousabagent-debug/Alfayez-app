@@ -116,7 +116,6 @@ async function deleteReportEmail(id) {
     renderReports();
 }
 
-// ==== إرسال التقرير (مع طباعة الخطأ) ====
 async function sendReport() {
     const emails = await getAll('report_emails');
     if (emails.length === 0) return alert('أضف إيميل أولاً');
@@ -168,24 +167,6 @@ async function sendReport() {
                             <span>${formatMoney(s.total)} ج</span>
                         </div>
                         <div style="font-size: 12px; color: #666; margin-bottom: 5px;">${s.date}</div>
-                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid #ddd;">
-                                    <th style="text-align: right; padding: 5px;">الصنف</th>
-                                    <th style="text-align: center; padding: 5px;">الكمية</th>
-                                    <th style="text-align: left; padding: 5px;">السعر</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${(s.invoice_data || s.invoice_items || []).map(i => `
-                                    <tr>
-                                        <td style="text-align: right; padding: 5px;">${i.name}</td>
-                                        <td style="text-align: center; padding: 5px;">${i.qty}</td>
-                                        <td style="text-align: left; padding: 5px;">${formatMoney(i.price)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
                     </div>
                 `).join('')}
             </div>
@@ -202,18 +183,6 @@ async function sendReport() {
                     `).join('')}
                 </ul>
             </div>
-            
-            <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
-                <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">سجل التحركات</h3>
-                ${activities.length === 0 ? '<p style="color: #999;">لا توجد تحركات مسجلة</p>' : ''}
-                <ul style="list-style: none; padding: 0; font-size: 12px;">
-                    ${activities.slice(0, 20).map(a => `
-                        <li style="padding: 5px 0; border-bottom: 1px dotted #eee; color: #555;">
-                            <b>${a.user_email}</b> - ${a.action}: ${a.details} <span style="color: #999;">(${a.date})</span>
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
         </div>
     `;
 
@@ -226,14 +195,10 @@ async function sendReport() {
             }
         });
 
-        if (error) {
-            // هنا بنطبع الخطأ الحقيقي اللي جاي من Supabase
-            alert('الخطأ الحقيقي: ' + JSON.stringify(error));
-            throw error;
-        }
+        if (error) throw error;
         alert('تم إرسال التقرير بنجاح!');
     } catch (error) {
-        // لو فيه خطأ تاني، هنطبعه
-        alert('خطأ في الإرسال: ' + error.message);
+        console.error(error);
+        alert('حدث خطأ في إرسال التقرير: ' + error.message);
     }
 }
