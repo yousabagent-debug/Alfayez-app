@@ -7,33 +7,38 @@ async function renderShifts() {
     const shifts = allShifts.filter(s => !s.closed && s.branch_id === state.currentBranch.id);
 
     $('#main-content').innerHTML = `
-        <h2 style="margin: 15px 0;">الورديات</h2>
-        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">افتح وردية جديدة وسجّل أصناف المبيعات</p>
+        <h2 style="margin: 15px 0;">${t('shifts')}</h2>
+        <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">${t('shiftsDesc')}</p>
 
         <div class="card">
-            <h3 style="margin-bottom:15px;">وردية جديدة</h3>
-            <label>نوع الوردية</label>
+            <h3 style="margin-bottom:15px;">${t('newShift')}</h3>
+            
+            <label>${t('shiftType')}</label>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button class="btn btn-outline" id="btn-day" style="flex:1;" onclick="selectShiftType('نهارية')">☀️ نهارية</button>
-                <button class="btn btn-outline" id="btn-night" style="flex:1;" onclick="selectShiftType('ليلية')">🌙 ليلية</button>
+                <button class="btn btn-outline" id="btn-day" style="flex:1;" onclick="selectShiftType('نهارية')">☀️ ${t('dayShift')}</button>
+                <button class="btn btn-outline" id="btn-night" style="flex:1;" onclick="selectShiftType('ليلية')">🌙 ${t('nightShift')}</button>
             </div>
-            <label>اسم الموظف المسؤول</label>
-            <input type="text" id="shiftEmp" placeholder="اسم الموظف" onkeyup="checkShiftBtn()">
+            
+            <label>${t('employeeName')}</label>
+            <input type="text" id="shiftEmp" placeholder="${t('employeeName')}" onkeyup="checkShiftBtn()">
+            
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
                 <input type="checkbox" id="shiftMatabak" style="width:20px; height:20px; margin:0;">
-                <label for="shiftMatabak" style="margin:0; font-weight:normal;">مطبق (شغال الورديتين)</label>
+                <label for="shiftMatabak" style="margin:0; font-weight:normal;">${t('matabak')}</label>
             </div>
-            <label>تاريخ الوردية</label>
+
+            <label>${t('shiftDate')}</label>
             <input type="date" id="shiftDate" value="${getToday()}">
-            <button class="btn btn-primary" id="openShiftBtn" onclick="openShift()" disabled>فتح الوردية وبدء الفاتورة</button>
+            
+            <button class="btn btn-primary" id="openShiftBtn" onclick="openShift()" disabled>${t('openShift')}</button>
         </div>
 
-        <h3 style="margin-top:25px; margin-bottom:15px;">ورديات مفتوحة (${shifts.length})</h3>
-        ${shifts.length === 0 ? '<p style="text-align:center; padding:20px; color:var(--text-muted); background:#fff; border-radius:12px; border:1px solid var(--border);">لا توجد ورديات مفتوحة حالياً</p>' : ''}
+        <h3 style="margin-top:25px; margin-bottom:15px;">${t('openShifts')} (${shifts.length})</h3>
+        ${shifts.length === 0 ? `<p style="text-align:center; padding:20px; color:var(--text-muted); background:#fff; border-radius:12px; border:1px solid var(--border);">${t('noOpenShifts')}</p>` : ''}
         ${shifts.map(s => `
             <div class="card" onclick="resumeShift(${s.id})" style="cursor:pointer;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="color:var(--primary);">${s.type} ${s.is_matabak ? '(مطبق)' : ''} - ${s.employee}</h4>
+                    <h4 style="color:var(--primary);">${s.type === 'نهارية' ? t('dayShift') : t('nightShift')} ${s.is_matabak ? t('matabak') : ''} - ${s.employee}</h4>
                     <span style="font-size:0.8rem; color:var(--text-muted);">${s.date}</span>
                 </div>
             </div>
@@ -85,7 +90,7 @@ async function openShift() {
 async function resumeShift(id) {
     state.activeShift = await getById('shifts', id);
     if (state.activeShift) {
-        state.activeShift.invoiceItems = state.activeShift.invoice_items || [];
+        state.activeShift.invoiceItems = state.activeShift.invoice_data || [];
         navigate('invoice');
     }
 }
