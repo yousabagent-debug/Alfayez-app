@@ -129,8 +129,16 @@ async function updateItemSelect() {
     const items = await getAll('items');
     const select = $('#addItemSelect');
     select.innerHTML = '<option value="">اختر الصنف</option>';
-    const filtered = comp ? items.filter(i => i.company === comp) : items;
-    filtered.forEach(i => { select.innerHTML += `<option value="${i.id}" data-price="${i.price}">${i.name} (متوفر: ${i.qty})</option>`; });
+    
+    // فلترة الأصناف بالشركة والفرع الحالي
+    const filtered = items.filter(i => 
+        i.branch_id === state.currentBranch.id && 
+        (!comp || i.company === comp)
+    );
+    
+    filtered.forEach(i => { 
+        select.innerHTML += `<option value="${i.id}" data-price="${i.price}">${i.name} (متوفر: ${i.qty})</option>`; 
+    });
 }
 
 document.addEventListener('change', (e) => {
@@ -156,8 +164,8 @@ async function addItemToInvoice(mode) {
     if(!state.activeShift.invoiceItems) state.activeShift.invoiceItems = [];
     state.activeShift.invoiceItems.push(item);
     state.activeShift.total = (state.activeShift.total || 0) + (item.price * item.qty);
+    state.activeShift.invoice_data = state.activeShift.invoiceItems;
     
-    // بنبعت البيانات في العمود الجديد invoice_data
     await updateItem('shifts', { id: state.activeShift.id, invoice_data: state.activeShift.invoiceItems, total: state.activeShift.total });
     
     $('#addItemOverlay').remove();
@@ -170,6 +178,7 @@ async function updateInvoiceQty(idx, newQty) {
     items[idx].qty = parseFloat(newQty);
     s.total = items.reduce((a,b) => a + (b.price * b.qty), 0);
     s.invoiceItems = items;
+    s.invoice_data = items;
     
     await updateItem('shifts', { id: s.id, invoice_data: items, total: s.total });
     renderInvoice();
@@ -189,7 +198,6 @@ async function closeShift(id) {
         }
     }
     
-    // بنقفل الوردية ونبعت البيانات
     await updateItem('shifts', { id: s.id, closed: true, invoice_data: items });
     
     state.activeShift = null;
