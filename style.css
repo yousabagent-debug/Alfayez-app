@@ -40,7 +40,7 @@ body {
     background: var(--bg-color);
 }
 
-/* Splash Screen */
+/* Splash Screen (شاشة البداية بملء الشاشة) */
 .splash {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -54,7 +54,7 @@ body {
 .splash img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: cover; /* عشان الصورة تملأ الشاشة كلها */
 }
 
 /* Header */
