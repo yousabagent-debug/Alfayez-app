@@ -25,7 +25,12 @@
                     <h1>الفايز للزيوت</h1>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px;">
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <!-- أيقونة الجرس للإشعارات مع عداد -->
+                <button class="icon-btn" onclick="openNotificationsModal()" title="الإشعارات" style="position: relative;">
+                    🔔
+                    <span id="notif-badge" style="position: absolute; top: 2px; right: 2px; background: red; color: white; border-radius: 50%; font-size: 0.6rem; padding: 1px 5px; display: none;">0</span>
+                </button>
                 <button class="icon-btn" onclick="navigate('branches')" title="الفروع">🔙</button>
                 <button class="icon-btn" onclick="openSettings()">⚙️</button>
                 <button class="icon-btn" onclick="logout()" style="color: var(--danger);">🚪</button>
