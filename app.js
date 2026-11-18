@@ -63,16 +63,17 @@ async function initSplash() {
                     } else if (!profile || profile.status === 'pending') {
                         navigate('pending');
                     } else if (profile.status === 'approved') {
-                        // الموظف المقبول: ندخله على فرعه مباشرة
                         const branches = await getAll('branches');
-                        const branch = branches.find(b => b.id === profile.branch_id);
+                        // تم حل مشكلة تطابق نوع البيانات (رقم أو نص) هنا بدقة
+                        const branch = branches.find(b => String(b.id) === String(profile.branch_id));
                         if (branch) {
                             state.userProfile = profile;
                             state.currentBranch = branch;
                             navigate('dashboard');
                         } else {
-                            // لو الفرع مش موجود (نادراً)، نرجعه لشاشة الانتظار
-                            navigate('pending');
+                            // لو الفرع مش متسحب صح، هندخله على صفحة اختيار الفروع مباشرة بدل ما الشاشة تقف
+                            state.userProfile = profile;
+                            navigate('branches');
                         }
                     }
                 }
