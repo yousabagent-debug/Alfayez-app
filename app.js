@@ -50,6 +50,8 @@ async function openNotificationsModal() {
             if (badge) badge.style.display = 'none';
         });
 
+        if (typeof supabaseClient === 'undefined') return;
+
         let { data: notifs, error } = await supabaseClient
             .from('notifications')
             .select('*')
@@ -100,5 +102,5 @@ window.addEventListener('load', () => {
     setTimeout(() => {
         window.notificationsRead = false;
         updateNotificationBadge();
-    }, 1500);
+    }, 2000);
 });
