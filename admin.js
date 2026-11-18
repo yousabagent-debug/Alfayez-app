@@ -164,16 +164,18 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
         }
     }
     
-    try {
-        await supabaseClient.from('notifications').insert([{
-            title: 'تغيير سعر صنف',
-            message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
-        }]);
-    } catch(e) {
-        console.log('خطأ في إرسال الإشعار', e);
+    // إرسال الإشعار لـ Supabase والتأكد من عدم وجود خطأ صامت
+    const { error: notifErr } = await supabaseClient.from('notifications').insert([{
+        title: 'تغيير سعر صنف',
+        message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
+    }]);
+    
+    if (notifErr) {
+        console.log('خطأ Supabase الإشعار:', notifErr);
+        alert('تم تحديث السعر، ولكن فشل إرسال الإشعار لقاعدة البيانات: ' + notifErr.message);
+    } else {
+        alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
     }
-
-    alert('تم تحديث السعر في كل الفروع وإرسال إشعار للموظفين!');
 }
 
 // ==== دالة فتح نافذة الإشعارات ====
@@ -247,7 +249,7 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
-// ==== إضافة صنف من شاشة الإدارة لكل الفروع تلقائياً ====
+// ==== إضافة صنف من شاشة الإدارة لكل الفروع تلقائياً مع إرسال إشعار ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -267,7 +269,7 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    // جلب كل الفروع وإضافة الصنف لكل فرع لضمان ظهوره في جميع الفروع
+    // جلب كل الفروع وإضافة الصنف لكل فرع
     const branches = await getAll('branches');
     if (branches && branches.length > 0) {
         for (let b of branches) {
@@ -289,9 +291,19 @@ async function saveNewItemAdmin(companyName, btn) {
         });
     }
 
+    // إرسال إشعار وإظهار خطأ لو وجد
+    const { error: notifErr } = await supabaseClient.from('notifications').insert([{
+        title: 'إضافة صنف جديد',
+        message: `تمت إضافة صنف جديد "${name}" (شركة ${companyName}) بسعر ${price} جنيه`
+    }]);
+
+    if (notifErr) {
+        console.log('خطأ إشعار الصنف:', notifErr);
+    }
+
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الصنف لكل الفروع بنجاح');
+    alert('تمت إضافة الصنف لكل الفروع وإرسال الإشعار للموظفين بنجاح');
 }
 
 async function startDeleteCompany(companyName) {
