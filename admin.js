@@ -7,13 +7,11 @@ async function updateNotificationBadge() {
 
         if (error) throw error;
 
-        // البحث الذكي عن أي زر بيفتح الإشعارات في الصفحة تلقائياً
         const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
 
         bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
             
-            // لو الإشعارات اتقرأت بنخفي العلامة فوراً
             if (window.notificationsRead) {
                 if (badge) badge.style.display = 'none';
                 return;
@@ -188,7 +186,6 @@ async function renderPriceManager() {
     html += '</div>';
     $('#main-content').innerHTML = html;
     renderBottomNav('dashboard');
-    updateNotificationBadge();
 }
 
 function toggleAdminCompanyItems(companyName) {
@@ -218,7 +215,7 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
     alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
 }
 
-// ==== دالة فتح نافذة الإشعارات وإخفاء العداد فوراً من الكود فقط ====
+// ==== دالة فتح نافذة الإشعارات وإخفاء العداد فوراً ====
 async function openNotificationsModal() {
     try {
         window.notificationsRead = true;
@@ -361,7 +358,6 @@ async function startDeleteCompany(companyName) {
     const comp = companies.find(c => c.name === companyName);
     if (comp) await deleteItem('companies', comp.id);
     
-    .
     const items = await getAll('items');
     for (let item of items) { if (item.company === companyName) { await deleteItem('items', item.id); } }
     
