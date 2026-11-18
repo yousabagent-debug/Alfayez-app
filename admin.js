@@ -164,7 +164,6 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
         }
     }
     
-    // إرسال إشعار تلقائي لـ Supabase بتغيير السعر
     try {
         await supabaseClient.from('notifications').insert([{
             title: 'تغيير سعر صنف',
@@ -177,7 +176,7 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
     alert('تم تحديث السعر في كل الفروع وإرسال إشعار للموظفين!');
 }
 
-// ==== دالة فتح نافذة الإشعارات عند الضغط على الجرس ====
+// ==== دالة فتح نافذة الإشعارات (المعدلة للعمل والإغلاق بسلاسة) ====
 async function openNotificationsModal() {
     try {
         let { data: notifs, error } = await supabaseClient
@@ -196,15 +195,24 @@ async function openNotificationsModal() {
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">${n.created_at ? new Date(n.created_at).toLocaleString('ar-EG') : ''}</div>
                 </div>
               `).join('')
-            : '<p style="text-align: center; color: var(--text-muted);">لا توجد إشعارات حالياً</p>';
+            : '<p style="text-align: center; color: var(--text-muted); padding: 20px;">لا توجد إشعارات حالياً</p>';
+
+        const existingModal = document.getElementById('notif-modal-overlay');
+        if (existingModal) existingModal.remove();
 
         let modalBg = document.createElement('div');
+        modalBg.id = 'notif-modal-overlay';
         modalBg.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:9999;";
+        
+        modalBg.onclick = function(e) {
+            if (e.target === modalBg) modalBg.remove();
+        };
+
         modalBg.innerHTML = `
             <div style="background:white; width:90%; max-width:400px; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.2); max-height:80vh; overflow-y:auto;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
                     <h3 style="margin:0; color:var(--primary);">🔔 الإشعارات والتنبيهات</h3>
-                    <button onclick="this.closest('div').remove()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--danger);">✕</button>
+                    <button onclick="document.getElementById('notif-modal-overlay').remove()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--danger); font-weight:bold;">✕</button>
                 </div>
                 <div>${notifHtml}</div>
             </div>
