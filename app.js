@@ -1,12 +1,14 @@
-// ==== دوال إدارية وتنبيهات الإشعارات (الجرس والعداد) لكل المستخدمين ====
+// ==== دوال الإشعارات الآمنة للتطبيق العام ====
 
 async function updateNotificationBadge() {
     try {
+        if (typeof supabaseClient === 'undefined') return;
+        
         let { count, error } = await supabaseClient
             .from('notifications')
             .select('*', { count: 'exact', head: true });
 
-        if (error) throw error;
+        if (error) return;
 
         const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
 
@@ -35,11 +37,10 @@ async function updateNotificationBadge() {
             }
         });
     } catch (e) {
-        console.log('خطأ في تحديث عداد الإشعارات:', e);
+        console.log('تنبيه الإشعارات:', e);
     }
 }
 
-// ==== دالة فتح نافذة الإشعارات وإخفاء العلامة الحمراء فور القراءة ====
 async function openNotificationsModal() {
     try {
         window.notificationsRead = true;
@@ -91,12 +92,13 @@ async function openNotificationsModal() {
 
     } catch (err) {
         console.log(err);
-        alert('فشل تحميل الإشعارات');
     }
 }
 
-// تشغيل فحص وإظهار العداد أول ما التطبيق يفتح
-setTimeout(() => {
-    window.notificationsRead = false;
-    updateNotificationBadge();
-}, 1000);
+// تشغيل خفيف بعد تحميل الصفحة بالكامل لضمان عدم توقف الـ Splash
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        window.notificationsRead = false;
+        updateNotificationBadge();
+    }, 1500);
+});
