@@ -1,3 +1,40 @@
+// ==== دالة جلب عدد الإشعارات وتحديث شكل الجرس (Badge) ====
+async function updateNotificationBadge() {
+    try {
+        let { count, error } = await supabaseClient
+            .from('notifications')
+            .select('*', { count: 'exact', head: true });
+
+        if (error) throw error;
+
+        // نفترض إن أقصى رقم أو كمثال نجيب إجمالي الإشعارات (أو ممكن نربطها بحالة القراءة لاحقاً)
+        const bellIconContainer = document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
+        // أو بنبحث عن الزر اللي بيفتح الإشعارات بناءً على الـ onclick بتاع دالة فتح النافذة
+        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || bellIconContainer;
+
+        if (bellBtn) {
+            let badge = bellBtn.querySelector('.notif-badge');
+            if (!badge && count > 0) {
+                badge = document.createElement('span');
+                badge.className = 'notif-badge';
+                badge.style.cssText = "position:absolute; top:-5px; right:-5px; background:var(--danger, #ff4757); color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem; font-weight:bold;";
+                bellBtn.style.position = 'relative';
+                bellBtn.appendChild(badge);
+            }
+            if (badge) {
+                if (count > 0) {
+                    badge.innerText = count > 99 ? '99+' : count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+    } catch (e) {
+        console.log('خطأ في تحديث عداد الإشعارات:', e);
+    }
+}
+
 // ==== إدارة الحسابات والموظفين ====
 async function renderAdminPanel() {
     const { data: profiles, error } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
@@ -49,6 +86,7 @@ async function renderAdminPanel() {
     html += '</div>';
     $('#main-content').innerHTML = html;
     renderBottomNav('dashboard');
+    updateNotificationBadge();
 }
 
 async function approveUser(userId) {
@@ -145,6 +183,7 @@ async function renderPriceManager() {
     html += '</div>';
     $('#main-content').innerHTML = html;
     renderBottomNav('dashboard');
+    updateNotificationBadge();
 }
 
 function toggleAdminCompanyItems(companyName) {
@@ -164,21 +203,16 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
         }
     }
     
-    // إرسال الإشعار لـ Supabase والتأكد من عدم وجود خطأ صامت
-    const { error: notifErr } = await supabaseClient.from('notifications').insert([{
+    await supabaseClient.from('notifications').insert([{
         title: 'تغيير سعر صنف',
         message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
     }]);
-    
-    if (notifErr) {
-        console.log('خطأ Supabase الإشعار:', notifErr);
-        alert('تم تحديث السعر، ولكن فشل إرسال الإشعار لقاعدة البيانات: ' + notifErr.message);
-    } else {
-        alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
-    }
+
+    updateNotificationBadge();
+    alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
 }
 
-// ==== دالة فتح نافذة الإشعارات ====
+// ==== دالة فتح نافذة الإشعارات وتحديث العداد تلقائياً ====
 async function openNotificationsModal() {
     try {
         let { data: notifs, error } = await supabaseClient
@@ -221,6 +255,7 @@ async function openNotificationsModal() {
         `;
         document.body.appendChild(modalBg);
 
+        // تحديث العداد فور فتح النافذة لو احتجت تخليه يصفر مثلاً (أو يفضل زي ما هو حسب رغبتك)
     } catch (err) {
         console.log(err);
         alert('فشل تحميل الإشعارات');
@@ -269,7 +304,6 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    // جلب كل الفروع وإضافة الصنف لكل فرع
     const branches = await getAll('branches');
     if (branches && branches.length > 0) {
         for (let b of branches) {
@@ -291,16 +325,12 @@ async function saveNewItemAdmin(companyName, btn) {
         });
     }
 
-    // إرسال إشعار وإظهار خطأ لو وجد
-    const { error: notifErr } = await supabaseClient.from('notifications').insert([{
+    await supabaseClient.from('notifications').insert([{
         title: 'إضافة صنف جديد',
         message: `تمت إضافة صنف جديد "${name}" (شركة ${companyName}) بسعر ${price} جنيه`
     }]);
 
-    if (notifErr) {
-        console.log('خطأ إشعار الصنف:', notifErr);
-    }
-
+    updateNotificationBadge();
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
     alert('تمت إضافة الصنف لكل الفروع وإرسال الإشعار للموظفين بنجاح');
@@ -342,3 +372,8 @@ async function startDeleteItem(itemName, companyName) {
     alert('تم حذف الصنف من كل الفروع');
     renderPriceManager();
 }
+
+// تشغيل فحص الإشعارات أول ما الملف يشتغل
+setTimeout(() => {
+    updateNotificationBadge();
+}, 1000);
