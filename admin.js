@@ -99,7 +99,7 @@ async function renderPriceManager() {
         </div>
         <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">تحكم كامل في الشركات والأسعار</p>
         
-        <button class="btn btn-primary" onclick="openAddCompanySheetAdmin()" style="margin-bottom: 20px;">+ إضافة شركة وصنف أول</button>
+        <button class="btn btn-primary" onclick="openAddCompanySheetAdmin()" style="margin-bottom: 20px;">+ إضافة شركة جديدة</button>
 
         <div id="adminCompaniesList">
     `;
@@ -225,57 +225,29 @@ async function openNotificationsModal() {
     }
 }
 
-// ==== إضافة شركة وصنف أول من شاشة الإدارة لكل الفروع ====
+// ==== إضافة شركة من شاشة الإدارة ====
 function openAddCompanySheetAdmin() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>إضافة شركة وصنف أول</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>اسم الشركة</label><input type="text" id="adminNewCompanyName" placeholder="مثال: موبيل"></div>
-            <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border);">
-            <div class="input-group"><label>اسم أول صنف</label><input type="text" id="adminFirstItemName" placeholder="مثال: زيت دلفاك 1 لتر"></div>
-            <div class="input-group"><label>السعر الأساسي</label><input type="number" id="adminFirstItemPrice" value="0"></div>
-            <button class="btn-save" onclick="saveCompanyWithItemAdmin(this)">حفظ الشركة والصنف</button>
+            <div class="bottom-sheet-header"><h2>شركة جديدة</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group"><label>اسم الشركة</label><input type="text" id="adminNewCompanyName" placeholder="مثال: التعاون"></div>
+            <button class="btn-save" onclick="saveNewCompanyAdmin(this)">حفظ الشركة</button>
         </div>
     `;
     document.body.appendChild(overlay);
 }
 
-async function saveCompanyWithItemAdmin(btn) {
-    const companyName = document.getElementById('adminNewCompanyName').value.trim();
-    const itemName = document.getElementById('adminFirstItemName').value.trim();
-    const price = parseFloat(document.getElementById('adminFirstItemPrice').value) || 0;
-
-    if (!companyName) { document.getElementById('adminNewCompanyName').style.borderColor = 'red'; return; }
-    
-    btn.innerText = 'جاري الحفظ...'; 
-    btn.disabled = true;
-
-    // 1. حفظ الشركة
-    await addItem('companies', { name: companyName });
-
-    // 2. حفظ الصنف الأول لكل فرع من الفروع
-    if (itemName) {
-        const branches = await getAll('branches');
-        if (branches && branches.length > 0) {
-            for (let b of branches) {
-                await addItem('items', { 
-                    name: itemName, 
-                    company: companyName, 
-                    price: price, 
-                    qty: 0,
-                    branch_id: b.id
-                });
-            }
-        }
-    }
-
+async function saveNewCompanyAdmin(btn) {
+    const name = document.getElementById('adminNewCompanyName').value.trim();
+    if (!name) { document.getElementById('adminNewCompanyName').style.borderColor = 'red'; return; }
+    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
+    await addItem('companies', { name });
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الشركة والصنف في كل الفروع بنجاح!');
 }
 
-// ==== إضافة صنف من شاشة الإدارة لكل الفروع ====
+// ==== إضافة صنف من شاشة الإدارة لكل الفروع تلقائياً ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -295,22 +267,31 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
+    // جلب كل الفروع وإضافة الصنف لكل فرع لضمان ظهوره في جميع الفروع
     const branches = await getAll('branches');
     if (branches && branches.length > 0) {
         for (let b of branches) {
             await addItem('items', { 
-                name: name, 
+                name, 
                 company: companyName, 
-                price: price, 
+                price, 
                 qty: 0,
                 branch_id: b.id
             });
         }
+    } else {
+        await addItem('items', { 
+            name, 
+            company: companyName, 
+            price, 
+            qty: 0,
+            branch_id: null
+        });
     }
 
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الصنف لكل الفروع');
+    alert('تمت إضافة الصنف لكل الفروع بنجاح');
 }
 
 async function startDeleteCompany(companyName) {
@@ -346,6 +327,6 @@ async function startDeleteItem(itemName, companyName) {
             await deleteItem('items', i.id);
         }
     }
-    alert('تم حذف الصنف لكل الفروع');
+    alert('تم حذف الصنف من كل الفروع');
     renderPriceManager();
 }
