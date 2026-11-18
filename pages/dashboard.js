@@ -19,8 +19,8 @@ async function renderDashboard() {
     $('#main-content').innerHTML = `
         <div style="padding-bottom:20px; padding-top:10px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <h3 style="font-size:1.2rem;">${t('welcome')}</h3>
-                <h2 style="color:var(--primary); font-size:1.5rem;">${state.currentBranch.name}</h2>
+                <h3 style="font-size:1.1rem; font-weight:normal;">أهلاً بك مجدداً يا <span style="font-weight:bold; color:var(--primary);">${state.userProfile ? (state.userProfile.name || state.userProfile.email.split('@')[0]) : ''}</span></h3>
+                <h2 style="color:var(--primary); font-size:1.4rem; margin-top:3px;">فرع: ${state.currentBranch.name}</h2>
             </div>
             <div style="background:#fff; padding:8px 12px; border-radius:10px; border:1px solid var(--border); font-size:0.85rem;">
                 ${getToday()}
