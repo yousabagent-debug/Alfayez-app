@@ -4,7 +4,8 @@ async function renderBranches() {
     $('#main-header').style.display = 'flex';
     
     const branches = await getAll('branches');
-    $('#branch-name').innerText = t('branches');
+    const branchNameEl = $('#branch-name');
+    if (branchNameEl) branchNameEl.innerText = t('branches');
 
     $('#main-content').innerHTML = `
         <div style="text-align:center; padding: 20px 0;">
@@ -20,6 +21,13 @@ async function renderBranches() {
     $('#bottom-nav').classList.add('hidden');
 
     const list = $('#branchesList');
+    if (!list) return;
+
+    if (branches.length === 0) {
+        list.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">لا توجد فروع مضافة حالياً.</p>`;
+        return;
+    }
+
     branches.forEach((b, index) => {
         const card = createEl('div', 'branch-card', `
             <div class="right"><div class="icon-box">${index + 1}</div><div class="details"><h3>${b.name}</h3></div></div>
@@ -37,7 +45,8 @@ async function renderBranches() {
 
 function loginBranch(branch) { 
     state.currentBranch = branch; 
-    $('#branch-name').innerText = branch.name; 
+    const branchNameEl = $('#branch-name');
+    if (branchNameEl) branchNameEl.innerText = branch.name; 
     navigate('dashboard'); 
 }
 
