@@ -225,7 +225,7 @@ async function openNotificationsModal() {
     }
 }
 
-// ==== إضافة شركة وصنف أول من شاشة الإدارة ====
+// ==== إضافة شركة وصنف أول من شاشة الإدارة لكل الفروع ====
 function openAddCompanySheetAdmin() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -254,23 +254,28 @@ async function saveCompanyWithItemAdmin(btn) {
     // 1. حفظ الشركة
     await addItem('companies', { name: companyName });
 
-    // 2. حفظ الصنف الأول التابع لها
+    // 2. حفظ الصنف الأول لكل فرع من الفروع
     if (itemName) {
-        await addItem('items', { 
-            name: itemName, 
-            company: companyName, 
-            price: price, 
-            qty: 0,
-            branch_id: null
-        });
+        const branches = await getAll('branches');
+        if (branches && branches.length > 0) {
+            for (let b of branches) {
+                await addItem('items', { 
+                    name: itemName, 
+                    company: companyName, 
+                    price: price, 
+                    qty: 0,
+                    branch_id: b.id
+                });
+            }
+        }
     }
 
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الشركة والصنف بنجاح!');
+    alert('تمت إضافة الشركة والصنف في كل الفروع بنجاح!');
 }
 
-// ==== إضافة صنف من شاشة الإدارة ====
+// ==== إضافة صنف من شاشة الإدارة لكل الفروع ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -290,13 +295,18 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    await addItem('items', { 
-        name, 
-        company: companyName, 
-        price, 
-        qty: 0,
-        branch_id: null
-    });
+    const branches = await getAll('branches');
+    if (branches && branches.length > 0) {
+        for (let b of branches) {
+            await addItem('items', { 
+                name: name, 
+                company: companyName, 
+                price: price, 
+                qty: 0,
+                branch_id: b.id
+            });
+        }
+    }
 
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
@@ -323,11 +333,11 @@ async function startDeleteCompany(companyName) {
 }
 
 async function startDeleteItem(itemName, companyName) {
-    const confirm1 = confirm('هل تريد حذف هذا صنف؟');
+    const confirm1 = confirm('هل تريد حذف هذا الصنف؟');
     if (!confirm1) return;
     const confirm2 = confirm('تأكيد ثاني: سيتم حذف الصنف نهائياً!');
     if (!confirm2) return;
-    const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟`);
+    const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟');
     if (!confirm3) return;
 
     const items = await getAll('items');
@@ -336,6 +346,6 @@ async function startDeleteItem(itemName, companyName) {
             await deleteItem('items', i.id);
         }
     }
-    alert('تم حذف الصنف من كل الفروع');
+    alert('تم حذف الصنف لكل الفروع');
     renderPriceManager();
 }
