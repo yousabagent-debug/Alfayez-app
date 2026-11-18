@@ -7,11 +7,13 @@ async function updateNotificationBadge() {
 
         if (error) throw error;
 
-        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
+        // البحث الذكي عن أي زر بيفتح الإشعارات في الصفحة تلقائياً
+        const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
 
-        if (bellBtn) {
+        bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
-            // لو العداد محلياً اتقرأ بنخفيه، غير كده بنعرض العدد
+            
+            // لو الإشعارات اتقرأت بنخفي العلامة فوراً
             if (window.notificationsRead) {
                 if (badge) badge.style.display = 'none';
                 return;
@@ -32,7 +34,7 @@ async function updateNotificationBadge() {
                     badge.style.display = 'none';
                 }
             }
-        }
+        });
     } catch (e) {
         console.log('خطأ في تحديث عداد الإشعارات:', e);
     }
@@ -211,21 +213,20 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
         message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
     }]);
 
-    window.notificationsRead = false; // إعادة تفعيل العداد لو اتضاف إشعار جديد
+    window.notificationsRead = false; 
     updateNotificationBadge();
     alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
 }
 
-// ==== دالة فتح نافذة الإشعارات وإخفاء العداد بمجرد الفتح ====
+// ==== دالة فتح نافذة الإشعارات وإخفاء العداد فوراً من الكود فقط ====
 async function openNotificationsModal() {
     try {
-        // تعليم الإشعارات أنها تمت قراءتها وإخفاء النقطة الحمراء فوراً
         window.notificationsRead = true;
-        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
-        if (bellBtn) {
+        const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
+        bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
             if (badge) badge.style.display = 'none';
-        }
+        });
 
         let { data: notifs, error } = await supabaseClient
             .from('notifications')
@@ -341,7 +342,7 @@ async function saveNewItemAdmin(companyName, btn) {
         message: `تمت إضافة صنف جديد "${name}" (شركة ${companyName}) بسعر ${price} جنيه`
     }]);
 
-    window.notificationsRead = false; // إعادة تفعيل العداد لو اتضاف إشعار جديد
+    window.notificationsRead = false; 
     updateNotificationBadge();
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
@@ -360,6 +361,7 @@ async function startDeleteCompany(companyName) {
     const comp = companies.find(c => c.name === companyName);
     if (comp) await deleteItem('companies', comp.id);
     
+    .
     const items = await getAll('items');
     for (let item of items) { if (item.company === companyName) { await deleteItem('items', item.id); } }
     
