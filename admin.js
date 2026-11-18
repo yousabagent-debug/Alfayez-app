@@ -7,13 +7,16 @@ async function updateNotificationBadge() {
 
         if (error) throw error;
 
-        // نفترض إن أقصى رقم أو كمثال نجيب إجمالي الإشعارات (أو ممكن نربطها بحالة القراءة لاحقاً)
-        const bellIconContainer = document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
-        // أو بنبحث عن الزر اللي بيفتح الإشعارات بناءً على الـ onclick بتاع دالة فتح النافذة
-        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || bellIconContainer;
+        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
 
         if (bellBtn) {
             let badge = bellBtn.querySelector('.notif-badge');
+            // لو العداد محلياً اتقرأ بنخفيه، غير كده بنعرض العدد
+            if (window.notificationsRead) {
+                if (badge) badge.style.display = 'none';
+                return;
+            }
+
             if (!badge && count > 0) {
                 badge = document.createElement('span');
                 badge.className = 'notif-badge';
@@ -208,13 +211,22 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
         message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
     }]);
 
+    window.notificationsRead = false; // إعادة تفعيل العداد لو اتضاف إشعار جديد
     updateNotificationBadge();
     alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
 }
 
-// ==== دالة فتح نافذة الإشعارات وتحديث العداد تلقائياً ====
+// ==== دالة فتح نافذة الإشعارات وإخفاء العداد بمجرد الفتح ====
 async function openNotificationsModal() {
     try {
+        // تعليم الإشعارات أنها تمت قراءتها وإخفاء النقطة الحمراء فوراً
+        window.notificationsRead = true;
+        const bellBtn = document.querySelector('button[onclick*="openNotificationsModal"]') || document.querySelector('.fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
+        if (bellBtn) {
+            let badge = bellBtn.querySelector('.notif-badge');
+            if (badge) badge.style.display = 'none';
+        }
+
         let { data: notifs, error } = await supabaseClient
             .from('notifications')
             .select('*')
@@ -255,7 +267,6 @@ async function openNotificationsModal() {
         `;
         document.body.appendChild(modalBg);
 
-        // تحديث العداد فور فتح النافذة لو احتجت تخليه يصفر مثلاً (أو يفضل زي ما هو حسب رغبتك)
     } catch (err) {
         console.log(err);
         alert('فشل تحميل الإشعارات');
@@ -330,6 +341,7 @@ async function saveNewItemAdmin(companyName, btn) {
         message: `تمت إضافة صنف جديد "${name}" (شركة ${companyName}) بسعر ${price} جنيه`
     }]);
 
+    window.notificationsRead = false; // إعادة تفعيل العداد لو اتضاف إشعار جديد
     updateNotificationBadge();
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
@@ -375,5 +387,6 @@ async function startDeleteItem(itemName, companyName) {
 
 // تشغيل فحص الإشعارات أول ما الملف يشتغل
 setTimeout(() => {
+    window.notificationsRead = false;
     updateNotificationBadge();
 }, 1000);
