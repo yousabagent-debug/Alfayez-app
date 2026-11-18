@@ -82,7 +82,6 @@ async function renderPriceManager() {
     const companies = await getAll('companies');
     const allItems = await getAll('items');
     
-    // إزالة التكرار: بناخد كل صنف مرة واحدة بس (حتى لو ليه نسخة في كل فرع)
     const uniqueItems = [];
     const seen = new Set();
     allItems.forEach(item => {
@@ -129,7 +128,7 @@ async function renderPriceManager() {
                                     <tr>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border);">
-                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice('${item.name}', '${item.company}', this.value)">
+                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice('${item.name}', '${item.company}', this.value, ${item.price})">
                                         </td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); text-align:center;">
                                             <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="startDeleteItem('${item.name}', '${item.company}')">🗑️</button>
@@ -154,17 +153,68 @@ function toggleAdminCompanyItems(companyName) {
     if (el) el.classList.toggle('hidden');
 }
 
-async function updatePrice(itemName, companyName, newPrice) {
+// ==== تحديث السعر وإرسال إشعار تلقائي لكل الموظفين ====
+async function updatePrice(itemName, companyName, newPrice, oldPrice) {
     if (!newPrice) return;
     const items = await getAll('items');
-    // بنحدث سعر الصنف في كل الفروع
     for (let item of items) {
         if (item.name === itemName && item.company === companyName) {
             item.price = parseFloat(newPrice);
             await updateItem('items', item);
         }
     }
-    alert('تم تحديث السعر في كل الفروع!');
+    
+    // إرسال إشعار تلقائي لـ Supabase بتغيير السعر
+    try {
+        await supabaseClient.from('notifications').insert([{
+            title: 'تغيير سعر صنف',
+            message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
+        }]);
+    } catch(e) {
+        console.log('خطأ في إرسال الإشعار', e);
+    }
+
+    alert('تم تحديث السعر في كل الفروع وإرسال إشعار للموظفين!');
+}
+
+// ==== دالة فتح نافذة الإشعارات عند الضغط على الجرس ====
+async function openNotificationsModal() {
+    try {
+        let { data: notifs, error } = await supabaseClient
+            .from('notifications')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+
+        let notifHtml = notifs && notifs.length > 0 
+            ? notifs.map(n => `
+                <div style="padding: 10px; border-bottom: 1px solid var(--border); text-align: right;">
+                    <div style="font-weight: bold; color: var(--primary);">${n.title || 'إشعار جديد'}</div>
+                    <div style="font-size: 0.9rem; color: var(--text-main); margin-top: 3px;">${n.message}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">${n.created_at ? new Date(n.created_at).toLocaleString('ar-EG') : ''}</div>
+                </div>
+              `).join('')
+            : '<p style="text-align: center; color: var(--text-muted);">لا توجد إشعارات حالياً</p>';
+
+        let modalBg = document.createElement('div');
+        modalBg.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:9999;";
+        modalBg.innerHTML = `
+            <div style="background:white; width:90%; max-width:400px; border-radius:12px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.2); max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                    <h3 style="margin:0; color:var(--primary);">🔔 الإشعارات والتنبيهات</h3>
+                    <button onclick="this.closest('div').remove()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--danger);">✕</button>
+                </div>
+                <div>${notifHtml}</div>
+            </div>
+        `;
+        document.body.appendChild(modalBg);
+
+    } catch (err) {
+        console.log(err);
+        alert('فشل تحميل الإشعارات');
+    }
 }
 
 // ==== إضافة شركة من شاشة الإدارة ====
@@ -189,7 +239,7 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
-// ==== إضافة صنف من شاشة الإدارة (صنف واحد بس) ====
+// ==== إضافة صنف من شاشة الإدارة ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -209,7 +259,6 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    // بنضيف الصنف مرة واحدة بس (من غير branch_id)
     await addItem('items', { 
         name, 
         company: companyName, 
