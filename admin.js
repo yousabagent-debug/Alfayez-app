@@ -128,7 +128,7 @@ async function renderPriceManager() {
                                     <tr>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); font-weight:700;">${item.name}</td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border);">
-                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice('${item.name}', '${item.company}', this.value, ${item.price})">
+                                            <input type="number" value="${item.price}" style="width:80px; padding:8px; text-align:center; font-weight:bold; border-radius:8px; border:1px solid var(--border);" onchange="updatePrice('${item.name}', '${item.company}', this.value)">
                                         </td>
                                         <td style="padding:8px; border-bottom:1px solid var(--border); text-align:center;">
                                             <button class="icon-btn" style="width:30px; height:30px; font-size:0.8rem; color:var(--danger);" onclick="startDeleteItem('${item.name}', '${item.company}')">🗑️</button>
@@ -153,8 +153,7 @@ function toggleAdminCompanyItems(companyName) {
     if (el) el.classList.toggle('hidden');
 }
 
-// ==== تحديث السعر وإرسال إشعار تلقائي لكل الموظفين ====
-async function updatePrice(itemName, companyName, newPrice, oldPrice) {
+async function updatePrice(itemName, companyName, newPrice) {
     if (!newPrice) return;
     const items = await getAll('items');
     for (let item of items) {
@@ -163,13 +162,7 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
             await updateItem('items', item);
         }
     }
-    
-    await supabaseClient.from('notifications').insert([{
-        title: 'تغيير سعر صنف',
-        message: `تم تغيير سعر "${itemName}" من ${oldPrice} إلى ${newPrice} جنيه`
-    }]);
-
-    alert('تم تحديث السعر في كل الفروع وإرسال الإشعار بنجاح!');
+    alert('تم تحديث السعر في كل الفروع!');
 }
 
 // ==== إضافة شركة من شاشة الإدارة ====
@@ -194,7 +187,7 @@ async function saveNewCompanyAdmin(btn) {
     renderPriceManager();
 }
 
-// ==== إضافة صنف من شاشة الإدارة لكل الفروع تلقائياً مع إرسال إشعار ====
+// ==== إضافة صنف من شاشة الإدارة (صنف واحد بس) ====
 function openAddItemSheetAdmin(companyName) {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
@@ -214,35 +207,17 @@ async function saveNewItemAdmin(companyName, btn) {
     if (!name) { document.getElementById('adminNewItemName').style.borderColor = 'red'; return; }
     btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
 
-    const branches = await getAll('branches');
-    if (branches && branches.length > 0) {
-        for (let b of branches) {
-            await addItem('items', { 
-                name, 
-                company: companyName, 
-                price, 
-                qty: 0,
-                branch_id: b.id
-            });
-        }
-    } else {
-        await addItem('items', { 
-            name, 
-            company: companyName, 
-            price, 
-            qty: 0,
-            branch_id: null
-        });
-    }
-
-    await supabaseClient.from('notifications').insert([{
-        title: 'إضافة صنف جديد',
-        message: `تمت إضافة صنف جديد "${name}" (شركة ${companyName}) بسعر ${price} جنيه`
-    }]);
+    await addItem('items', { 
+        name, 
+        company: companyName, 
+        price, 
+        qty: 0,
+        branch_id: null
+    });
 
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
-    alert('تمت إضافة الصنف لكل الفروع وإرسال الإشعار للموظفين بنجاح');
+    alert('تمت إضافة الصنف لكل الفروع');
 }
 
 async function startDeleteCompany(companyName) {
