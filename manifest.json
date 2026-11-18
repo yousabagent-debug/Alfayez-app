@@ -16,5 +16,14 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "id": "com.yousab.software",
+  "dir": "rtl",
+  "scope": ".",
+  "orientation": "portrait",
+  "categories": [
+    "business",
+    "finance"
+  ],
+  "description": "نظام اداره حسابات متكامل"
 }
