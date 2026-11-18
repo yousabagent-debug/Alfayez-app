@@ -64,14 +64,14 @@ async function initSplash() {
                         navigate('pending');
                     } else if (profile.status === 'approved') {
                         const branches = await getAll('branches');
-                        // تم حل مشكلة تطابق نوع البيانات (رقم أو نص) هنا بدقة
+                        // تم حل مشكلة عدم تطابق نوع البيانات (String/Number) جذرياً هنا
                         const branch = branches.find(b => String(b.id) === String(profile.branch_id));
                         if (branch) {
                             state.userProfile = profile;
                             state.currentBranch = branch;
                             navigate('dashboard');
                         } else {
-                            // لو الفرع مش متسحب صح، هندخله على صفحة اختيار الفروع مباشرة بدل ما الشاشة تقف
+                            // لو الفرع مش متحدد للموظف، بنحوله لشاشة اختيار الفروع بأمان
                             state.userProfile = profile;
                             navigate('branches');
                         }
