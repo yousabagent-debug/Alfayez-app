@@ -99,7 +99,7 @@ async function renderPriceManager() {
         </div>
         <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem;">تحكم كامل في الشركات والأسعار</p>
         
-        <button class="btn btn-primary" onclick="openAddCompanySheetAdmin()" style="margin-bottom: 20px;">+ إضافة شركة جديدة</button>
+        <button class="btn btn-primary" onclick="openAddCompanySheetAdmin()" style="margin-bottom: 20px;">+ إضافة شركة وصنف أول</button>
 
         <div id="adminCompaniesList">
     `;
@@ -176,7 +176,7 @@ async function updatePrice(itemName, companyName, newPrice, oldPrice) {
     alert('تم تحديث السعر في كل الفروع وإرسال إشعار للموظفين!');
 }
 
-// ==== دالة فتح نافذة الإشعارات (المعدلة للعمل والإغلاق بسلاسة) ====
+// ==== دالة فتح نافذة الإشعارات ====
 async function openNotificationsModal() {
     try {
         let { data: notifs, error } = await supabaseClient
@@ -225,26 +225,49 @@ async function openNotificationsModal() {
     }
 }
 
-// ==== إضافة شركة من شاشة الإدارة ====
+// ==== إضافة شركة وصنف أول من شاشة الإدارة ====
 function openAddCompanySheetAdmin() {
     const overlay = createEl('div', 'bottom-sheet-overlay');
     overlay.innerHTML = `
         <div class="bottom-sheet">
-            <div class="bottom-sheet-header"><h2>شركة جديدة</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
-            <div class="input-group"><label>اسم الشركة</label><input type="text" id="adminNewCompanyName" placeholder="مثال: التعاون"></div>
-            <button class="btn-save" onclick="saveNewCompanyAdmin(this)">حفظ الشركة</button>
+            <div class="bottom-sheet-header"><h2>إضافة شركة وصنف أول</h2><button class="close-btn" onclick="this.closest('.bottom-sheet-overlay').remove()">✖</button></div>
+            <div class="input-group"><label>اسم الشركة</label><input type="text" id="adminNewCompanyName" placeholder="مثال: موبيل"></div>
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border);">
+            <div class="input-group"><label>اسم أول صنف</label><input type="text" id="adminFirstItemName" placeholder="مثال: زيت دلفاك 1 لتر"></div>
+            <div class="input-group"><label>السعر الأساسي</label><input type="number" id="adminFirstItemPrice" value="0"></div>
+            <button class="btn-save" onclick="saveCompanyWithItemAdmin(this)">حفظ الشركة والصنف</button>
         </div>
     `;
     document.body.appendChild(overlay);
 }
 
-async function saveNewCompanyAdmin(btn) {
-    const name = document.getElementById('adminNewCompanyName').value.trim();
-    if (!name) { document.getElementById('adminNewCompanyName').style.borderColor = 'red'; return; }
-    btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
-    await addItem('companies', { name });
+async function saveCompanyWithItemAdmin(btn) {
+    const companyName = document.getElementById('adminNewCompanyName').value.trim();
+    const itemName = document.getElementById('adminFirstItemName').value.trim();
+    const price = parseFloat(document.getElementById('adminFirstItemPrice').value) || 0;
+
+    if (!companyName) { document.getElementById('adminNewCompanyName').style.borderColor = 'red'; return; }
+    
+    btn.innerText = 'جاري الحفظ...'; 
+    btn.disabled = true;
+
+    // 1. حفظ الشركة
+    await addItem('companies', { name: companyName });
+
+    // 2. حفظ الصنف الأول التابع لها
+    if (itemName) {
+        await addItem('items', { 
+            name: itemName, 
+            company: companyName, 
+            price: price, 
+            qty: 0,
+            branch_id: null
+        });
+    }
+
     btn.closest('.bottom-sheet-overlay').remove();
     renderPriceManager();
+    alert('تمت إضافة الشركة والصنف بنجاح!');
 }
 
 // ==== إضافة صنف من شاشة الإدارة ====
@@ -300,11 +323,11 @@ async function startDeleteCompany(companyName) {
 }
 
 async function startDeleteItem(itemName, companyName) {
-    const confirm1 = confirm('هل تريد حذف هذا الصنف؟');
+    const confirm1 = confirm('هل تريد حذف هذا صنف؟');
     if (!confirm1) return;
     const confirm2 = confirm('تأكيد ثاني: سيتم حذف الصنف نهائياً!');
     if (!confirm2) return;
-    const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟');
+    const confirm3 = confirm('تأكيد أخير: هل أنت متأكد 100%؟`);
     if (!confirm3) return;
 
     const items = await getAll('items');
