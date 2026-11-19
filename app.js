@@ -64,12 +64,14 @@ async function initSplash() {
                         navigate('pending');
                     } else if (profile.status === 'approved') {
                         const branches = await getAll('branches');
+                        // تم حل مشكلة عدم تطابق نوع البيانات (String/Number) جذرياً هنا
                         const branch = branches.find(b => String(b.id) === String(profile.branch_id));
                         if (branch) {
                             state.userProfile = profile;
                             state.currentBranch = branch;
                             navigate('dashboard');
                         } else {
+                            // لو الفرع مش متحدد للموظف، بنحوله لشاشة اختيار الفروع بأمان
                             state.userProfile = profile;
                             navigate('branches');
                         }
@@ -117,37 +119,52 @@ async function renderPendingScreen() {
     `;
 }
 
-// ==== دوال الإشعارات وجرس التنبيهات (آمنة تماماً وخلف الكواليس) ====
+// ==== دوال الإشعارات وجرس التنبيهات (حفظ حالة القراءة حتى بعد التحديث) ====
+const LAST_SEEN_NOTIF_KEY = 'last_seen_notification_id';
+
+function getLastSeenNotifId() {
+    const val = localStorage.getItem(LAST_SEEN_NOTIF_KEY);
+    return val ? Number(val) : 0;
+}
+
+function setLastSeenNotifId(id) {
+    if (id && !Number.isNaN(Number(id))) {
+        localStorage.setItem(LAST_SEEN_NOTIF_KEY, String(Number(id)));
+    }
+}
+
 async function updateNotificationBadge() {
     try {
         if (typeof supabaseClient === 'undefined') return;
-        
-        let { count, error } = await supabaseClient
+
+        const lastSeenId = getLastSeenNotifId();
+
+        // نجيب الإشعارات الأحدث من آخر إشعار تم قراءته
+        const { data: unreadNotifs, error } = await supabaseClient
             .from('notifications')
-            .select('*', { count: 'exact', head: true });
+            .select('id')
+            .gt('id', lastSeenId)
+            .order('id', { ascending: false });
 
         if (error) return;
 
-        const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell'); 
+        const unreadCount = unreadNotifs ? unreadNotifs.length : 0;
+        const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
 
         bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
-            
-            if (window.notificationsRead) {
-                if (badge) badge.style.display = 'none';
-                return;
-            }
 
-            if (!badge && count > 0) {
+            if (!badge && unreadCount > 0) {
                 badge = document.createElement('span');
                 badge.className = 'notif-badge';
                 badge.style.cssText = "position:absolute; top:-5px; right:-5px; background:var(--danger, #ff4757); color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem; font-weight:bold;";
                 bellBtn.style.position = 'relative';
                 bellBtn.appendChild(badge);
             }
+
             if (badge) {
-                if (count > 0) {
-                    badge.innerText = count > 99 ? '99+' : count;
+                if (unreadCount > 0) {
+                    badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
                     badge.style.display = 'inline-block';
                 } else {
                     badge.style.display = 'none';
@@ -161,7 +178,7 @@ async function updateNotificationBadge() {
 
 async function openNotificationsModal() {
     try {
-        window.notificationsRead = true;
+        // إخفاء العلامة الحمراء فوراً عند الفتح
         const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
         bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
@@ -170,13 +187,21 @@ async function openNotificationsModal() {
 
         if (typeof supabaseClient === 'undefined') return;
 
-        let { data: notifs, error } = await supabaseClient
+        const { data: notifs, error } = await supabaseClient
             .from('notifications')
             .select('*')
             .order('id', { ascending: false })
             .limit(10);
 
         if (error) throw error;
+
+        // حفظ أعلى id كآخر إشعار تمت قراءته عشان ما يرجعش بعد التحديث
+        if (notifs && notifs.length > 0) {
+            const maxId = Math.max(...notifs.map(n => Number(n.id) || 0));
+            if (maxId > getLastSeenNotifId()) {
+                setLastSeenNotifId(maxId);
+            }
+        }
 
         let notifHtml = notifs && notifs.length > 0 
             ? notifs.map(n => `
@@ -217,9 +242,7 @@ async function openNotificationsModal() {
 
 window.onload = () => { 
     initSplash(); 
-    // فحص الإشعارات بعد تحميل التطبيق بمدة كافية لضمان عدم حدوث أي تعليق
     setTimeout(() => {
-        window.notificationsRead = false;
         updateNotificationBadge();
-    }, 3000);
+    }, 2500);
 };
