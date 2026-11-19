@@ -64,18 +64,19 @@ async function initSplash() {
                         navigate('pending');
                     } else if (profile.status === 'approved') {
                         const branches = await getAll('branches');
-                        // تم حل مشكلة عدم تطابق نوع البيانات (String/Number) جذرياً هنا
                         const branch = branches.find(b => String(b.id) === String(profile.branch_id));
                         if (branch) {
                             state.userProfile = profile;
                             state.currentBranch = branch;
                             navigate('dashboard');
                         } else {
-                            // لو الفرع مش متحدد للموظف، بنحوله لشاشة اختيار الفروع بأمان
                             state.userProfile = profile;
                             navigate('branches');
                         }
                     }
+
+                    // تحديث عداد الإشعارات بعد تحديد هوية المستخدم
+                    updateNotificationBadge();
                 }
             }, 500);
         }, 2000);
@@ -119,17 +120,40 @@ async function renderPendingScreen() {
     `;
 }
 
-// ==== دوال الإشعارات وجرس التنبيهات (حفظ حالة القراءة حتى بعد التحديث) ====
-const LAST_SEEN_NOTIF_KEY = 'last_seen_notification_id';
+// ==== دوال الإشعارات وجرس التنبيهات (لكل موظف بشكل مستقل) ====
+async function getNotificationStorageKey() {
+    let userId = null;
 
-function getLastSeenNotifId() {
-    const val = localStorage.getItem(LAST_SEEN_NOTIF_KEY);
+    if (state.userProfile && state.userProfile.id) {
+        userId = state.userProfile.id;
+    } else if (state.userProfile && state.userProfile.email) {
+        userId = state.userProfile.email;
+    } else if (typeof getCurrentUser === 'function') {
+        try {
+            const currentUser = await getCurrentUser();
+            if (currentUser && currentUser.id) {
+                userId = currentUser.id;
+            } else if (currentUser && currentUser.email) {
+                userId = currentUser.email;
+            }
+        } catch (e) {
+            console.log('تعذر جلب المستخدم الحالي للإشعارات:', e);
+        }
+    }
+
+    return userId ? `last_seen_notification_id_${userId}` : 'last_seen_notification_id_guest';
+}
+
+async function getLastSeenNotifId() {
+    const key = await getNotificationStorageKey();
+    const val = localStorage.getItem(key);
     return val ? Number(val) : 0;
 }
 
-function setLastSeenNotifId(id) {
+async function setLastSeenNotifId(id) {
     if (id && !Number.isNaN(Number(id))) {
-        localStorage.setItem(LAST_SEEN_NOTIF_KEY, String(Number(id)));
+        const key = await getNotificationStorageKey();
+        localStorage.setItem(key, String(Number(id)));
     }
 }
 
@@ -137,9 +161,8 @@ async function updateNotificationBadge() {
     try {
         if (typeof supabaseClient === 'undefined') return;
 
-        const lastSeenId = getLastSeenNotifId();
+        const lastSeenId = await getLastSeenNotifId();
 
-        // نجيب الإشعارات الأحدث من آخر إشعار تم قراءته
         const { data: unreadNotifs, error } = await supabaseClient
             .from('notifications')
             .select('id')
@@ -178,7 +201,6 @@ async function updateNotificationBadge() {
 
 async function openNotificationsModal() {
     try {
-        // إخفاء العلامة الحمراء فوراً عند الفتح
         const bellBtns = document.querySelectorAll('button[onclick*="openNotificationsModal"], .fa-bell, [onclick*="openNotificationsModal"], .notification-bell');
         bellBtns.forEach(bellBtn => {
             let badge = bellBtn.querySelector('.notif-badge');
@@ -195,11 +217,11 @@ async function openNotificationsModal() {
 
         if (error) throw error;
 
-        // حفظ أعلى id كآخر إشعار تمت قراءته عشان ما يرجعش بعد التحديث
         if (notifs && notifs.length > 0) {
             const maxId = Math.max(...notifs.map(n => Number(n.id) || 0));
-            if (maxId > getLastSeenNotifId()) {
-                setLastSeenNotifId(maxId);
+            const currentLastSeen = await getLastSeenNotifId();
+            if (maxId > currentLastSeen) {
+                await setLastSeenNotifId(maxId);
             }
         }
 
